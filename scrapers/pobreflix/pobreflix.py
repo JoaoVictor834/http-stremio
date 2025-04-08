@@ -7,6 +7,7 @@ import requests
 
 from imdb import IMDB
 from scrapers.pobreflix.utils import stream_from_streamtape
+from stremio import StremioStreamManager
 
 
 BASE_URL = "https://pobreflixtv.love/"
@@ -36,8 +37,6 @@ def search(search_term: str) -> list[PobreflixResult]:
 
     # get all search results
     page_html = BeautifulSoup(response.text, "html.parser")
-    with open("page.html", "w") as f:
-        f.write(page_html.prettify())
     results = page_html.find_all("div", {"id": "collview"})
     result_list = []
     for result in results:
@@ -103,7 +102,7 @@ def get_sources(url: str):
 def movie_streams(imdb: str):
     pages = get_media_pages(imdb)
 
-    streams = []
+    streams = StremioStreamManager()
     if "dub" in pages.keys():
         # get list of links to every avaliable source
         dub_sources = get_sources(f"{pages['dub']}?area=online")
@@ -111,16 +110,7 @@ def movie_streams(imdb: str):
         # extract stream links from every source
         try:
             streamtape = stream_from_streamtape(dub_sources["streamtape"])
-            streamtape_dict = {
-                "title": "Streamtape (DUB)",
-                "name": "Pobreflix",
-                "url": streamtape["url"],
-                "behaviorHints": {
-                    "notWebReady": False,
-                    "proxyHeaders": streamtape["headers"],
-                },
-            }
-            streams.append(streamtape_dict)
+            streams.add_stream("Pobreflix", "Streamtape (DUB)", streamtape["url"], False, streamtape["headers"])
         except:
             pass
 
@@ -131,21 +121,12 @@ def movie_streams(imdb: str):
         # extract stream links from every source
         try:
             streamtape = stream_from_streamtape(leg_sources["streamtape"])
-            streamtape_dict = {
-                "title": "Streamtape (LEG)",
-                "name": "Pobreflix",
-                "url": streamtape["url"],
-                "behaviorHints": {
-                    "notWebReady": False,
-                    "proxyHeaders": streamtape["headers"],
-                },
-            }
-            streams.append(streamtape_dict)
+            streams.add_stream("Pobreflix", "Streamtape (LEG)", streamtape["url"], False, streamtape["headers"])
         except:
             pass
 
     # format as a stremio json
-    return {"streams": streams}
+    return streams.to_dict()
 
 
 def get_epiosode_url(url: str, season: int, episode: int) -> str | None:
@@ -169,7 +150,7 @@ def get_epiosode_url(url: str, season: int, episode: int) -> str | None:
 def series_stream(imdb: str, season: int, episode: int):
     pages = get_media_pages(imdb)
 
-    streams = []
+    streams = StremioStreamManager()
     if "dub" in pages.keys():
         # get list of links to every avaliable source
         episode_url = get_epiosode_url(pages["dub"], season, episode)
@@ -179,16 +160,7 @@ def series_stream(imdb: str, season: int, episode: int):
             # extract stream links from every source
             try:
                 streamtape = stream_from_streamtape(dub_sources["streamtape"])
-                streamtape_dict = {
-                    "title": "Streamtape (DUB)",
-                    "name": "Pobreflix",
-                    "url": streamtape["url"],
-                    "behaviorHints": {
-                        "notWebReady": False,
-                        "proxyHeaders": streamtape["headers"],
-                    },
-                }
-                streams.append(streamtape_dict)
+                streams.add_stream("Pobreflix", "Streamtape (DUB)", streamtape["url"], False, streamtape["headers"])
             except:
                 pass
 
@@ -201,20 +173,11 @@ def series_stream(imdb: str, season: int, episode: int):
             # extract stream links from every source
             try:
                 streamtape = stream_from_streamtape(leg_sources["streamtape"])
-                streamtape_dict = {
-                    "title": "Streamtape (LEG)",
-                    "name": "Pobreflix",
-                    "url": streamtape["url"],
-                    "behaviorHints": {
-                        "notWebReady": False,
-                        "proxyHeaders": streamtape["headers"],
-                    },
-                }
-                streams.append(streamtape_dict)
+                streams.add_stream("Pobreflix", "Streamtape (LEG)", streamtape["url"], False, streamtape["headers"])
             except:
                 pass
 
-    return {"streams": streams}
+    return streams.to_dict()
 
 
 if __name__ == "__main__":
