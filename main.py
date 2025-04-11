@@ -36,7 +36,7 @@ async def addon_manifest():
 @app.get("/stream/movie/{id}.json")
 async def movie_stream(request: Request):
     id = request.path_params.get("id")
-    streams = pobreflix.movie_streams(id)
+    streams = await pobreflix.movie_streams(id)
 
     return JSONResponse(streams)
 
@@ -48,6 +48,6 @@ async def series_stream(request: Request):
     season = int(request.path_params.get("season"))
     episode = int(request.path_params.get("episode"))
 
-    streams = pobreflix.series_stream(id, season, episode)
+    streams = await pobreflix.series_stream(id, season, episode)
 
     return JSONResponse(streams)

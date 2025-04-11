@@ -1,8 +1,9 @@
+import asyncio
 import typing
 import re
 
 from bs4 import BeautifulSoup
-import requests
+import aiohttp
 
 
 class IMDB:
@@ -14,7 +15,7 @@ class IMDB:
         return f"<title: {self.title} | year: {self.year}>"
 
     @classmethod
-    def get(cls, code: str, lang: typing.Literal["en", "fr", "de", "es", "pt", "ja", "zh"] = "en"):
+    async def get(cls, code: str, lang: typing.Literal["en", "fr", "de", "es", "pt", "ja", "zh"] = "en"):
         # list of languages accepted by imdb
         accept_languages = {
             "en": "en-US,en;q=0.9",  # US English
@@ -34,17 +35,18 @@ class IMDB:
             raise AttributeError(msg)
 
         # get media page
-        imdb_url = f"https://www.imdb.com/title/{code}/"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
-            "Accept-Language": lang,
-        }
-        response = requests.get(imdb_url, headers=headers)
-        if response.status_code != 200:
-            msg = f"Bad status code when requesting IMDb page. Expected '200', got '{response.status_code}'"
-            raise Exception(msg)
+        async with aiohttp.ClientSession() as session:
+            imdb_url = f"https://www.imdb.com/title/{code}/"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
+                "Accept-Language": lang,
+            }
+            response = await session.get(imdb_url, headers=headers)
+            if response.status != 200:
+                msg = f"Bad status code when requesting IMDb page. Expected '200', got '{response.status_code}'"
+                raise Exception(msg)
 
-        imdb_html = BeautifulSoup(response.content, "html.parser")
+            imdb_html = BeautifulSoup(await response.text(), "html.parser")
 
         # get title
         title = imdb_html.find("h1").text
@@ -69,5 +71,19 @@ class IMDB:
         return IMDB(title, year)
 
 
+async def main():
+    tasks = [
+        IMDB.get("tt1305826"),
+        IMDB.get("tt32149847"),
+        IMDB.get("tt23649128"),
+        IMDB.get("tt31806037"),
+        IMDB.get("tt11280740"),
+    ]
+
+    results = await asyncio.gather(*tasks)
+    for result in results:
+        print(result)
+
+
 if __name__ == "__main__":
-    print(IMDB.get("tt1305826"))
+    asyncio.run(main())

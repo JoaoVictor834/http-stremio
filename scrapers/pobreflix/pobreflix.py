@@ -1,9 +1,8 @@
 from urllib.parse import urljoin, urlencode
-import typing
-import re
+import asyncio
 
 from bs4 import BeautifulSoup
-import requests
+import aiohttp
 
 from imdb import IMDB
 from scrapers.pobreflix.utils import stream_from_streamtape
@@ -24,19 +23,21 @@ class PobreflixResult:
         return f"<title: {self.title} | year: {self.year} | audio: {self.audio} | url: {self.url}>"
 
 
-def search(search_term: str) -> list[PobreflixResult]:
+async def search(search_term: str) -> list[PobreflixResult]:
     # search for its title on the site
     query_params = urlencode({"p": search_term})
     search_url = urljoin(BASE_URL, "pesquisar")
     search_url = f"{search_url}?{query_params}"
 
-    response = requests.get(search_url)
-    if response.status_code != 200:
-        msg = f"Unexpected status code when fetching page. Expected '200', got '{response.status_code}'"
-        raise Exception(msg)
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(search_url)
+        if response.status != 200:
+            msg = f"Unexpected status code when fetching page. Expected '200', got '{response.status}'"
+            raise Exception(msg)
+
+        page_html = BeautifulSoup(await response.text(), "html.parser")
 
     # get all search results
-    page_html = BeautifulSoup(response.text, "html.parser")
     results = page_html.find_all("div", {"id": "collview"})
     result_list = []
     for result in results:
@@ -58,12 +59,12 @@ def search(search_term: str) -> list[PobreflixResult]:
     return result_list
 
 
-def get_media_pages(imdb: str) -> dict:
+async def get_media_pages(imdb: str) -> dict:
     # get media info on imdb
-    info = IMDB.get(imdb, "pt")
+    info = await IMDB.get(imdb, "pt")
 
     # search for media with matching title and release year
-    search_results = search(info.title)
+    search_results = await search(info.title)
     pages_list = []
     for result in search_results:
         result: PobreflixResult
@@ -82,9 +83,10 @@ def get_media_pages(imdb: str) -> dict:
         raise Exception(msg)
 
 
-def get_sources(url: str):
-    response = requests.get(url)
-    html = BeautifulSoup(response.text, "html.parser")
+async def get_sources(url: str):
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(url)
+        html = BeautifulSoup(await response.text(), "html.parser")
 
     sources = {}
     sources_ul = html.find("ul", {"id": "baixar_menu"})
@@ -99,28 +101,28 @@ def get_sources(url: str):
     return sources
 
 
-def movie_streams(imdb: str):
-    pages = get_media_pages(imdb)
+async def movie_streams(imdb: str):
+    pages = await get_media_pages(imdb)
 
     streams = StremioStreamManager()
     if "dub" in pages.keys():
         # get list of links to every avaliable source
-        dub_sources = get_sources(f"{pages['dub']}?area=online")
+        dub_sources = await get_sources(f"{pages['dub']}?area=online")
 
         # extract stream links from every source
         try:
-            streamtape = stream_from_streamtape(dub_sources["streamtape"])
+            streamtape = await stream_from_streamtape(dub_sources["streamtape"])
             streams.add_stream("Pobreflix", "Streamtape (DUB)", streamtape["url"], False, streamtape["headers"])
         except:
             pass
 
     if "leg" in pages.keys():
         # get list of links to every avaliable source
-        leg_sources = get_sources(f"{pages['leg']}?area=online")
+        leg_sources = await get_sources(f"{pages['leg']}?area=online")
 
         # extract stream links from every source
         try:
-            streamtape = stream_from_streamtape(leg_sources["streamtape"])
+            streamtape = await stream_from_streamtape(leg_sources["streamtape"])
             streams.add_stream("Pobreflix", "Streamtape (LEG)", streamtape["url"], False, streamtape["headers"])
         except:
             pass
@@ -129,13 +131,15 @@ def movie_streams(imdb: str):
     return streams.to_dict()
 
 
-def get_epiosode_url(url: str, season: int, episode: int) -> str | None:
-    # get page of the desired season
-    season_url = f"{url}?temporada={season}"
-    season_response = requests.get(season_url)
+async def get_epiosode_url(url: str, season: int, episode: int) -> str | None:
+    async with aiohttp.ClientSession() as session:
+        # get page of the desired season
+        season_url = f"{url}?temporada={season}"
+        season_response = await session.get(season_url)
+
+        season_html = BeautifulSoup(await season_response.text(), "html.parser")
 
     # get url of the desired episode
-    season_html = BeautifulSoup(season_response.text, "html.parser")
     a_elements = season_html.find("ul", {"id": "listagem"}).find_all("a")
     episode = str(episode).zfill(2)
     episode_url = None
@@ -147,32 +151,32 @@ def get_epiosode_url(url: str, season: int, episode: int) -> str | None:
     return episode_url
 
 
-def series_stream(imdb: str, season: int, episode: int):
-    pages = get_media_pages(imdb)
+async def series_stream(imdb: str, season: int, episode: int):
+    pages = await get_media_pages(imdb)
 
     streams = StremioStreamManager()
     if "dub" in pages.keys():
         # get list of links to every avaliable source
-        episode_url = get_epiosode_url(pages["dub"], season, episode)
+        episode_url = await get_epiosode_url(pages["dub"], season, episode)
         if episode_url is not None:
-            dub_sources = get_sources(episode_url)
+            dub_sources = await get_sources(episode_url)
 
             # extract stream links from every source
             try:
-                streamtape = stream_from_streamtape(dub_sources["streamtape"])
+                streamtape = await stream_from_streamtape(dub_sources["streamtape"])
                 streams.add_stream("Pobreflix", "Streamtape (DUB)", streamtape["url"], False, streamtape["headers"])
             except:
                 pass
 
     if "leg" in pages.keys():
         # get list of links to every avaliable source
-        episode_url = get_epiosode_url(pages["leg"], season, episode)
+        episode_url = await get_epiosode_url(pages["leg"], season, episode)
         if episode_url is not None:
-            leg_sources = get_sources(episode_url)
+            leg_sources = await get_sources(episode_url)
 
             # extract stream links from every source
             try:
-                streamtape = stream_from_streamtape(leg_sources["streamtape"])
+                streamtape = await stream_from_streamtape(leg_sources["streamtape"])
                 streams.add_stream("Pobreflix", "Streamtape (LEG)", streamtape["url"], False, streamtape["headers"])
             except:
                 pass
@@ -181,4 +185,4 @@ def series_stream(imdb: str, season: int, episode: int):
 
 
 if __name__ == "__main__":
-    print(series_stream("tt1305826", 8, 9))
+    print(asyncio.run(series_stream("tt1305826", 8, 9)))
