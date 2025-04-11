@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from scrapers.pobreflix import pobreflix
+from scrapers import pobreflix
+
 
 app = FastAPI(debug=True)
 

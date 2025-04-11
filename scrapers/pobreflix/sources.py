@@ -1,4 +1,5 @@
-import asyncio
+# functions to extract stream links from site sources
+
 import typing
 import re
 
@@ -11,7 +12,7 @@ class StreamInfo(typing.TypedDict):
     headers: dict
 
 
-async def stream_from_streamtape(url: str) -> StreamInfo:
+async def streamtape(url: str) -> StreamInfo:
     async with aiohttp.ClientSession() as session:
         # get video page
         headers = {
