@@ -32,7 +32,7 @@ async def movie_streams(imdb: str):
             pass
 
     # format as a stremio json
-    return streams.to_dict()
+    return streams.to_list()
 
 
 async def series_stream(imdb: str, season: int, episode: int):
@@ -65,4 +65,4 @@ async def series_stream(imdb: str, season: int, episode: int):
             except:
                 pass
 
-    return streams.to_dict()
+    return streams.to_list()

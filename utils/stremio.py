@@ -29,8 +29,11 @@ class StremioStreamManager:
         stream = StremioStream(name, title, url, not_web_ready, headers)
         self.streams.append(stream)
 
+    def to_list(self):
+        return [stream.to_dict() for stream in self.streams]
+
     def to_dict(self):
-        return {"streams": [stream.to_dict() for stream in self.streams]}
+        return {"streams": self.to_list()}
 
 
 if __name__ == "__main__":

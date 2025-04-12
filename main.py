@@ -1,8 +1,12 @@
+import asyncio
+import ast
+
+import requests
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from scrapers import pobreflix
+from scrapers import pobreflix, redecanais
 
 
 app = FastAPI(debug=True)
@@ -37,9 +41,16 @@ async def addon_manifest():
 @app.get("/stream/movie/{id}.json")
 async def movie_stream(request: Request):
     id = request.path_params.get("id")
-    streams = await pobreflix.movie_streams(id)
 
-    return JSONResponse(streams)
+    tasks = [
+        pobreflix.movie_streams(id),
+        redecanais.movie_streams(id),
+    ]
+    results = await asyncio.gather(*tasks)
+    streams = results[0] + results[1]
+    print(streams)
+
+    return JSONResponse({"streams": streams})
 
 
 # serie stream route
@@ -51,4 +62,4 @@ async def series_stream(request: Request):
 
     streams = await pobreflix.series_stream(id, season, episode)
 
-    return JSONResponse(streams)
+    return JSONResponse({"streams": streams})
