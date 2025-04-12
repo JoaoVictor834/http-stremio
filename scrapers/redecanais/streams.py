@@ -6,7 +6,7 @@ from .main import get_media_pages
 from .sources import get_video_player_url, get_download_page_url, get_stream_url
 
 
-async def movie_streams(imdb: str):
+async def movie_streams(imdb: str, use_local_proxy: bool = False):
     pages = await get_media_pages(imdb, "movie")
 
     streams = StremioStreamManager()
@@ -16,9 +16,15 @@ async def movie_streams(imdb: str):
         download_page_url = get_download_page_url(video_player_url)
         stream = get_stream_url(download_page_url)
 
-        # create formated stream json
-        headers = {"Referer": download_page_url}
-        streams.add_stream("Redecanais", "Redecanais (DUB)", stream, False, headers=headers)
+        if not use_local_proxy:
+            # create formated stream json
+            headers = {"Referer": download_page_url}
+            streams.add_stream("Redecanais", "Redecanais (DUB)", stream, False, headers=headers)
+        else:
+            # create formated stream json using proxy
+            headers = {"Referer": download_page_url}
+            query = urlencode({"url": stream, "headers": headers})
+            streams.add_stream("Redecanais", "Redecanais (DUB)", f"https://127.0.0.1:6222/proxy/?{query}")
 
     if "leg" in pages.keys():
         # get video stream
@@ -26,9 +32,16 @@ async def movie_streams(imdb: str):
         download_page_url = get_download_page_url(video_player_url)
         stream = get_stream_url(download_page_url)
 
-        # create formated stream json
-        headers = {"Referer": download_page_url}
-        streams.add_stream("Redecanais", "Redecanais (LEG)", stream, False, headers=headers)
+        if not use_local_proxy:
+            # create formated stream json
+            headers = {"Referer": download_page_url}
+            streams.add_stream("Redecanais", "Redecanais (LEG)", stream, False, headers=headers)
+
+        else:
+            # create formated stream json using proxy
+            headers = {"Referer": download_page_url}
+            query = urlencode({"url": stream, "headers": headers})
+            streams.add_stream("Redecanais", "Redecanais (LEG)", f"https://127.0.0.1:6222/proxy/?{query}")
 
     return streams.to_list()
 

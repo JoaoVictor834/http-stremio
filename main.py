@@ -2,6 +2,7 @@ import asyncio
 import ast
 
 import requests
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +22,7 @@ app.add_middleware(
 
 MANIFEST = {
     "id": "org.stremio.huuuuuugo.httpstreams",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "name": "HTTP Stream",
     "description": "Stream videos over http",
     "types": ["movie", "series"],
@@ -44,11 +45,12 @@ async def movie_stream(request: Request):
 
     tasks = [
         pobreflix.movie_streams(id),
-        redecanais.movie_streams(id),
+        redecanais.movie_streams(id, True),
     ]
     results = await asyncio.gather(*tasks)
-    streams = results[0] + results[1]
-    print(streams)
+    streams = []
+    for result in results:
+        streams += result
 
     return JSONResponse({"streams": streams})
 
@@ -63,3 +65,28 @@ async def series_stream(request: Request):
     streams = await pobreflix.series_stream(id, season, episode)
 
     return JSONResponse({"streams": streams})
+
+
+@app.get("/proxy/")
+async def read_root(request: Request, url: str, headers: str | None = None):
+    if headers is not None:
+        headers = ast.literal_eval(headers)
+    else:
+        headers = {}
+
+    range = request.headers.get("Range")
+    status = 200
+    if range:
+        headers.update({"Range": range})
+        status = 201
+
+    response = requests.get(url, headers=headers, stream=True)
+
+    return StreamingResponse(
+        response.iter_content(1024 * 1024),
+        status_code=status,
+    )
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=6222, ssl_keyfile="localhost.key", ssl_certfile="localhost.crt")
