@@ -6,7 +6,10 @@ from . import sources
 
 
 async def movie_streams(imdb: str):
-    pages = await get_media_pages(imdb)
+    try:
+        pages = await get_media_pages(imdb)
+    except:
+        return []
 
     streams = StremioStreamManager()
     if "dub" in pages.keys():
@@ -36,7 +39,10 @@ async def movie_streams(imdb: str):
 
 
 async def series_stream(imdb: str, season: int, episode: int):
-    pages = await get_media_pages(imdb)
+    try:
+        pages = await get_media_pages(imdb)
+    except:
+        return []
 
     streams = StremioStreamManager()
     if "dub" in pages.keys():

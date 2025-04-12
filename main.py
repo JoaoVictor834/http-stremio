@@ -2,9 +2,10 @@ import asyncio
 import ast
 
 import requests
+import aiohttp
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from scrapers import pobreflix, redecanais
@@ -62,9 +63,25 @@ async def series_stream(request: Request):
     season = int(request.path_params.get("season"))
     episode = int(request.path_params.get("episode"))
 
-    streams = await pobreflix.series_stream(id, season, episode)
+    tasks = [
+        pobreflix.series_stream(id, season, episode),
+        redecanais.series_stream(id, season, episode, True),
+    ]
+    results = await asyncio.gather(*tasks)
+    streams = []
+    for result in results:
+        streams += result
+
+    print(streams)
 
     return JSONResponse({"streams": streams})
+
+
+async def fetch_stream(url: str, headers: dict = None):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            async for chunk in response.content.iter_chunked(8192):
+                yield chunk
 
 
 @app.get("/proxy/")
@@ -78,12 +95,11 @@ async def read_root(request: Request, url: str, headers: str | None = None):
     status = 200
     if range:
         headers.update({"Range": range})
-        status = 201
-
-    response = requests.get(url, headers=headers, stream=True)
+        status = 206
 
     return StreamingResponse(
-        response.iter_content(1024 * 1024),
+        fetch_stream(url, headers=headers),
+        media_type="video/mp4",
         status_code=status,
     )
 

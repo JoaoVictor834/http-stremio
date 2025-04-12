@@ -5,12 +5,14 @@ import asyncio
 import typing
 import re
 
+from bs4 import BeautifulSoup
 import requests
 
 from utils.imdb import IMDB
 from utils.stremio import StremioStreamManager
 from .sources import REDECANAIS_URL
 from .utils import to_kebab_case
+from .decoders import decode_from_response
 
 MOVIE_LIST = {}
 SERIES_LIST = {}
@@ -80,7 +82,88 @@ def parse_media_lists():
                         SERIES_LIST["-"].append(url)
 
 
-async def get_media_pages(imdb: str, type: typing.Literal["movie", "series"]) -> dict:
+# TODO: update it to work with pages that don't reset the episode number on each season
+async def get_series_pages(imdb: str, season: int, episode: int):
+    info = await IMDB.get(imdb, "pt")
+    title = to_kebab_case(info.title)
+    first_char = title[0] if title[0].isalpha() else "-"
+
+    # parse lists used on the search if not parsed yet
+    if not (MOVIE_LIST and SERIES_LIST):
+        parse_media_lists()
+
+    # run through the list of series searching for urls that contains the target title
+    matches = []
+    for url in SERIES_LIST[first_char]:
+        if title in url:
+            matches.append(url)
+
+    # get the match with the lowest amount of chars to remove series with bigger titles that contain the target title
+    page_url = matches[0]
+    for match in matches:
+        if len(match) < len(page_url):
+            page_url = match
+
+    page_url = urljoin(REDECANAIS_URL, page_url)
+    response = requests.get(page_url)
+
+    # get the html element containing all episodes
+    html = BeautifulSoup(decode_from_response(response), "html.parser")
+    p_list = html.find_all("p")
+    episodes_html = ""
+    for p in p_list:
+        p: BeautifulSoup
+        if len(p.text) > len(episodes_html):
+            episodes_html = p.prettify()
+
+    # search for the season and episode sequentially
+    season_found = False
+    episode_found = False
+    episode_urls = []
+    episode_audios = []
+    episode_pages = {}
+    for line in episodes_html.splitlines():
+        # search for the target season
+        if not season_found:
+            if "Temporada" in line and str(season) in line:
+                season_found = True
+                continue
+
+        # search for the target episode
+        elif not episode_found:
+            if "Ep" in line and str(episode) in line:
+                episode_found = True
+                continue
+
+        # search for the episode pages urls
+        else:
+            url = re.findall(r"href *= *\"(.+?)\"", line)
+            if url:
+                url = urljoin(REDECANAIS_URL, url[0])
+                episode_urls.append(url)
+
+            # mark episode as dub or leg
+            elif "Legendado" in line:
+                episode_audios.append("leg")
+            elif "Assistir" in line or "Dublado" in line:
+                episode_audios.append("dub")
+
+            # break loop if a new episode or season or the max amount of streams is reached
+            elif "Ep" in line and str(episode + 1) in line:
+                break
+            elif "Temporada" in line and str(season + 1) in line:
+                break
+            if len(episode_urls) >= 2:
+                break
+
+    # mount the pages dict
+    for i, key in enumerate(episode_audios):
+        episode_pages.update({key: episode_urls[i]})
+
+    return episode_pages
+
+
+async def get_movie_pages(imdb: str) -> dict:
     # get information about the target media
     info = await IMDB.get(imdb, "pt")
     title = to_kebab_case(info.title)
@@ -93,16 +176,11 @@ async def get_media_pages(imdb: str, type: typing.Literal["movie", "series"]) ->
 
     # search for the target media
     media_pages = {}
-    match type:
-        case "movie":
-            for url in MOVIE_LIST[first_char]:
-                if title in url and year in url:
-                    if "legendado" in url:
-                        media_pages.update({"leg": urljoin(REDECANAIS_URL, url)})
-                    else:
-                        media_pages.update({"dub": urljoin(REDECANAIS_URL, url)})
-
-        case "series":
-            pass
+    for url in MOVIE_LIST[first_char]:
+        if title in url and year in url:
+            if "legendado" in url:
+                media_pages.update({"leg": urljoin(REDECANAIS_URL, url)})
+            else:
+                media_pages.update({"dub": urljoin(REDECANAIS_URL, url)})
 
     return media_pages
