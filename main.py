@@ -1,12 +1,12 @@
 import asyncio
 import ast
 
-import requests
 import aiohttp
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import HTTPException
 
 from scrapers import pobreflix, redecanais
 
@@ -72,37 +72,80 @@ async def series_stream(request: Request):
     for result in results:
         streams += result
 
-    print(streams)
-
     return JSONResponse({"streams": streams})
 
 
-async def fetch_stream(url: str, headers: dict = None):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            async for chunk in response.content.iter_chunked(8192):
-                yield chunk
+async def yield_chunks(request: Request, session: aiohttp.ClientSession, response: aiohttp.ClientResponse, chunk_size: int = 8192):
+    """Takes a `ClientSession` and `ClientResponse` object and yields chunks for a `StreamingResponse`.
+
+    Also closes both objects after a connection is closed or the files is fully streamed.
+    """
+    # iterate through the response content yielding chunks
+    try:
+        async for chunk in response.content.iter_chunked(chunk_size):
+            # check if client disconnects
+            if await request.is_disconnected():
+                break
+            yield chunk
+
+    # triggered when client disconnects mid-stream
+    except asyncio.CancelledError:
+        print("Stream cancelled by client!")
+        raise HTTPException(status_code=499)
+
+    # handle host errors
+    except Exception as e:
+        print(f"Streaming erro: {e}")
+        raise HTTPException(status_code=502, detail="Upstream CDN error")
+
+    # cleanup
+    finally:
+        response.release()
+        session.close()
 
 
 @app.get("/proxy/")
 async def read_root(request: Request, url: str, headers: str | None = None):
+    # turn request headers into a dict
+    request_headers = {key.lower(): request.headers.get(key) for key in request.headers.keys()}
+
+    # create headers dict that will be used on the request to the host
     if headers is not None:
         headers = ast.literal_eval(headers)
     else:
         headers = {}
 
-    range = request.headers.get("Range")
-    status = 200
-    if range:
-        headers.update({"Range": range})
-        status = 206
+    # get headers relevant to the host
+    if "range" in request_headers.keys():
+        headers.update({"range": request_headers["range"]})
 
+    if "accept" in request_headers.keys():
+        headers.update({"accept": request_headers["accept"]})
+
+    # start session and request outside of a context managers
+    session = aiohttp.ClientSession()
+    response = await session.get(url, headers=headers)
+
+    # get response header as a dict
+    response_headers = {key.lower(): response.headers.get(key) for key in response.headers.keys()}
+
+    # remove host's CORS restrictions from response headers
+    if "access-control-allow-origin" in response_headers.keys():
+        response_headers.update({"access-control-allow-origin": "*"})
+
+    # return stream
     return StreamingResponse(
-        fetch_stream(url, headers=headers),
-        media_type="video/mp4",
-        status_code=status,
+        yield_chunks(request, session, response),
+        headers=response_headers,
+        status_code=response.status,
     )
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=6222, ssl_keyfile="localhost.key", ssl_certfile="localhost.crt")
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=6222,
+        ssl_keyfile="localhost.key",
+        ssl_certfile="localhost.crt",
+    )
