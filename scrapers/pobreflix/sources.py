@@ -6,6 +6,8 @@ import re
 import aiohttp
 from bs4 import BeautifulSoup
 
+from .exceptions import *
+
 
 class StreamInfo:
     def __init__(self, url: str, headers: dict | None = None):
@@ -35,7 +37,7 @@ class StreamtapeStream:
             # check status code
             if response.status != 200:
                 msg = f"Unexpected status code when getting streamtape url. Expected '200', got '{response.status}'"
-                raise Exception(msg)
+                raise UnexpectedStatusCode(msg)
 
             html = BeautifulSoup(await response.text(), "html.parser")
 
@@ -62,7 +64,7 @@ class StreamtapeStream:
             return StreamInfo(stream_url)
         else:
             msg = "Error extracting stream url from streamtape"
-            raise Exception(msg)
+            raise StreamtapeParsingError(msg)
 
 
 async def streamtape_stream(streamtape_url: str):

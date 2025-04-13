@@ -8,6 +8,7 @@ import requests
 
 from .utils import convert_to_punycode
 from .decoders import decode_from_response
+from .exceptions import *
 
 REDECANAIS_URL = "https://redecanais.ec"
 VIDEO_HOST_URL = "https://xn----------------g34l3fkp7msh1cj3acobj33ac2a7a8lufomma7cf2b1sh.xn---1l1--5o4dxb.xn---22--11--33--99--75---------b25zjf3lta6mwf6a47dza94e.xn--pck.xn--zck.xn--0ck.xn--pck.xn--yck.xn-----0b4asja8cbew2b4b0gd0edbjm2jpa1b1e9zva7a0347s4da2797e7qri.xn--1ck2e1b/player3"
@@ -42,7 +43,7 @@ class DownloadStream:
             return video_url
         else:
             msg = "Failed to extract video url from video page"
-            raise Exception(msg)
+            raise VideoPageParsningError(msg)
 
     @classmethod
     def get_download_page_url(cls, video_player_url: str) -> str:
@@ -75,8 +76,8 @@ class DownloadStream:
         if download_page_url:
             return download_page_url[0]
         else:
-            msg = "Could not extract download page url from serverforms html."
-            raise Exception(msg)
+            msg = "Could not extract download page url from serverforms html"
+            raise ServerFormsParsingError(msg)
 
     @classmethod
     def get_download_stream_url(cls, download_page_url: str) -> str:
@@ -91,7 +92,7 @@ class DownloadStream:
             return f"https:{download_link[0]}"
         else:
             msg = "Could not extract download link from download page"
-            raise Exception(msg)
+            raise DownloadPageParsingError(msg)
 
     @classmethod
     def get(cls, video_page_url: str) -> StreamInfo:
@@ -158,8 +159,8 @@ class PlayerStream:
             stream = urljoin(new_host, stream[0])
             return stream
         else:
-            msg = "Could not extract download page url from serverforms html."
-            raise Exception(msg)
+            msg = "Could not extract stream url from serverforms html."
+            raise ServerFormsParsingError(msg)
 
     @classmethod
     def get(cls, video_page_url: str):

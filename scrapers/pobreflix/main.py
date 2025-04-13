@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import aiohttp
 
 from utils.imdb import IMDB
+from .exceptions import *
 
 
 BASE_URL = "https://pobreflixtv.love/"
@@ -32,7 +33,7 @@ async def search(search_term: str) -> list[PobreflixResult]:
         response = await session.get(search_url)
         if response.status != 200:
             msg = f"Unexpected status code when fetching page. Expected '200', got '{response.status}'"
-            raise Exception(msg)
+            raise UnexpectedStatusCode(msg)
 
         page_html = BeautifulSoup(await response.text(), "html.parser")
 
@@ -79,7 +80,7 @@ async def get_media_pages(imdb: str) -> dict:
 
     else:
         msg = f"No media found for code '{imdb}'"
-        raise Exception(msg)
+        raise MediaNotFound(msg)
 
 
 async def get_sources(url: str):
