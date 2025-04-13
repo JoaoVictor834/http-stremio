@@ -1,11 +1,13 @@
 # functions to get stremio formated streams for movies and series
 
+from urllib.parse import urlencode
+
 from utils.stremio import StremioStreamManager
 from .main import get_media_pages, get_sources, get_epiosode_url
-from . import sources
+from .sources import streamtape_stream
 
 
-async def movie_streams(imdb: str):
+async def movie_streams(imdb: str, use_local_proxy: bool = False):
     try:
         pages = await get_media_pages(imdb)
     except:
@@ -18,8 +20,15 @@ async def movie_streams(imdb: str):
 
         # extract stream links from every source
         try:
-            streamtape = await sources.streamtape(dub_sources["streamtape"])
-            streams.add_stream("Pobreflix", "Streamtape (DUB)", streamtape["url"], False, streamtape["headers"])
+            stream_info = await streamtape_stream(dub_sources["streamtape"])
+            stream = stream_info.url
+            headers = stream_info.headers
+
+            if not use_local_proxy:
+                streams.add_stream("Pobreflix", "Streamtape (DUB)", stream, False, headers)
+            else:
+                query = urlencode({"url": stream, "headers": headers})
+                streams.add_stream("Pobreflix", "Streamtape (DUB)", f"https://127.0.0.1:6222/proxy/?{query}")
         except:
             pass
 
@@ -29,8 +38,15 @@ async def movie_streams(imdb: str):
 
         # extract stream links from every source
         try:
-            streamtape = await sources.streamtape(leg_sources["streamtape"])
-            streams.add_stream("Pobreflix", "Streamtape (LEG)", streamtape["url"], False, streamtape["headers"])
+            stream_info = await streamtape_stream(leg_sources["streamtape"])
+            stream = stream_info.url
+            headers = stream_info.headers
+
+            if not use_local_proxy:
+                streams.add_stream("Pobreflix", "Streamtape (LEG)", stream, False, headers)
+            else:
+                query = urlencode({"url": stream, "headers": headers})
+                streams.add_stream("Pobreflix", "Streamtape (LEG)", f"https://127.0.0.1:6222/proxy/?{query}")
         except:
             pass
 
@@ -38,7 +54,7 @@ async def movie_streams(imdb: str):
     return streams.to_list()
 
 
-async def series_stream(imdb: str, season: int, episode: int):
+async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: bool = False):
     try:
         pages = await get_media_pages(imdb)
     except:
@@ -53,8 +69,15 @@ async def series_stream(imdb: str, season: int, episode: int):
 
             # extract stream links from every source
             try:
-                streamtape = await sources.streamtape(dub_sources["streamtape"])
-                streams.add_stream("Pobreflix", "Streamtape (DUB)", streamtape["url"], False, streamtape["headers"])
+                stream_info = await streamtape_stream(dub_sources["streamtape"])
+                stream = stream_info.url
+                headers = stream_info.headers
+
+                if not use_local_proxy:
+                    streams.add_stream("Pobreflix", "Streamtape (DUB)", stream, False, headers)
+                else:
+                    query = urlencode({"url": stream, "headers": headers})
+                    streams.add_stream("Pobreflix", "Streamtape (DUB)", f"https://127.0.0.1:6222/proxy/?{query}")
             except:
                 pass
 
@@ -66,8 +89,15 @@ async def series_stream(imdb: str, season: int, episode: int):
 
             # extract stream links from every source
             try:
-                streamtape = await sources.streamtape(leg_sources["streamtape"])
-                streams.add_stream("Pobreflix", "Streamtape (LEG)", streamtape["url"], False, streamtape["headers"])
+                stream_info = await streamtape_stream(leg_sources["streamtape"])
+                stream = stream_info.url
+                headers = stream_info.headers
+
+                if not use_local_proxy:
+                    streams.add_stream("Pobreflix", "Streamtape (LEG)", stream, False, headers)
+                else:
+                    query = urlencode({"url": stream, "headers": headers})
+                    streams.add_stream("Pobreflix", "Streamtape (LEG)", f"https://127.0.0.1:6222/proxy/?{query}")
             except:
                 pass
 
