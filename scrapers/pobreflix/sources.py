@@ -32,6 +32,7 @@ class StreamtapeStream:
             if "window.location.href" in await response.text():
                 matches = re.findall(r"window.location.href *= *\"(.+)\" *;?", await response.text())
                 redirect_url = matches[0]
+                response.release()
                 response = await session.get(redirect_url)
 
             # check status code
@@ -40,6 +41,7 @@ class StreamtapeStream:
                 raise UnexpectedStatusCode(msg)
 
             html = BeautifulSoup(await response.text(), "html.parser")
+            response.release()
 
         # find script element containing the stream link
         stream_url = ""

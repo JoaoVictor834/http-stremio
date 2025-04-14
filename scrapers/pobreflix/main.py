@@ -30,12 +30,12 @@ async def search(search_term: str) -> list[PobreflixResult]:
     search_url = f"{search_url}?{query_params}"
 
     async with aiohttp.ClientSession() as session:
-        response = await session.get(search_url)
-        if response.status != 200:
-            msg = f"Unexpected status code when fetching page. Expected '200', got '{response.status}'"
-            raise UnexpectedStatusCode(msg)
+        async with session.get(search_url) as response:
+            if response.status != 200:
+                msg = f"Unexpected status code when fetching page. Expected '200', got '{response.status}'"
+                raise UnexpectedStatusCode(msg)
 
-        page_html = BeautifulSoup(await response.text(), "html.parser")
+            page_html = BeautifulSoup(await response.text(), "html.parser")
 
     # get all search results
     results = page_html.find_all("div", {"id": "collview"})
@@ -85,8 +85,8 @@ async def get_media_pages(imdb: str) -> dict:
 
 async def get_sources(url: str):
     async with aiohttp.ClientSession() as session:
-        response = await session.get(url)
-        html = BeautifulSoup(await response.text(), "html.parser")
+        async with session.get(url) as response:
+            html = BeautifulSoup(await response.text(), "html.parser")
 
     sources = {}
     sources_ul = html.find("ul", {"id": "baixar_menu"})
@@ -105,9 +105,8 @@ async def get_epiosode_url(url: str, season: int, episode: int) -> str | None:
     async with aiohttp.ClientSession() as session:
         # get page of the desired season
         season_url = f"{url}?temporada={season}"
-        season_response = await session.get(season_url)
-
-        season_html = BeautifulSoup(await season_response.text(), "html.parser")
+        async with session.get(season_url) as season_response:
+            season_html = BeautifulSoup(await season_response.text(), "html.parser")
 
     # get url of the desired episode
     a_elements = season_html.find("ul", {"id": "listagem"}).find_all("a")
