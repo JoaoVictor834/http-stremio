@@ -3,7 +3,7 @@
 import base64
 import re
 
-import requests
+import aiohttp
 
 
 def decode_redecanais(payload: list[str], key: int):
@@ -32,11 +32,12 @@ def decode_redecanais(payload: list[str], key: int):
         return "".join(final_chars)
 
 
-def decode_from_response(response: requests.Response):
+async def decode_from_response(response: aiohttp.ClientResponse):
+    print("decode_from_response")
     # iterate through the response and extract all the encoded strings
     prev_chunk = ""
     b64_list = []
-    for chunk in response.iter_content(1024):
+    async for chunk in response.content.iter_chunked(1024):
         # extract b64 strings from current chunk plus what was left from the previous chunk
         curr_chunk = prev_chunk + chunk.decode()
         b64_strs = re.findall(r"((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=))", curr_chunk)

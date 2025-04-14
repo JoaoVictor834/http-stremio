@@ -6,10 +6,9 @@ import typing
 import re
 
 from bs4 import BeautifulSoup
-import requests
+import aiohttp
 
 from utils.imdb import IMDB
-from utils.stremio import StremioStreamManager
 from .sources import REDECANAIS_URL
 from .utils import to_kebab_case
 from .decoders import decode_from_response
@@ -18,79 +17,93 @@ MOVIE_LIST = {}
 SERIES_LIST = {}
 
 
-def parse_media_lists():
+async def parse_media_lists():
     """Turn list of movies and list of series into dicts grouped by initial letters"""
-    movie_list_response = requests.get(urljoin(REDECANAIS_URL, "mapafilmes.html"))
-    series_list_response = requests.get(urljoin(REDECANAIS_URL, "mapa.html"))
+    print("parse_media_lists")
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            session.get(urljoin(REDECANAIS_URL, "mapafilmes.html")),
+            session.get(urljoin(REDECANAIS_URL, "mapa.html")),
+        ]
 
-    # iterate through every line of movies html searching for urls
-    list_started = False
-    for line in movie_list_response.iter_lines():
-        line = str(line)
-        # wait for the beggining of the list to be reached
-        if not list_started:
-            if "<b>Filmes</b>" in line:
-                list_started = True
+        results = await asyncio.gather(*tasks)
+        movie_list_response: aiohttp.ClientResponse = results[0]
+        series_list_response: aiohttp.ClientResponse = results[1]
 
-        else:
-            url = re.findall(r"href *= *\"(.+?)\"", line)
-            if url:
-                url = url[0]
+        # iterate through every line of movies html searching for urls
+        list_started = False
+        movie_list_text = await movie_list_response.text()
+        for line in movie_list_text.split("\n"):
+            line = str(line)
+            # wait for the beggining of the list to be reached
+            if not list_started:
+                if "<b>Filmes</b>" in line:
+                    list_started = True
 
-                # append url to the list corresponding to its first letter
-                first_letter = url[1]
-                if first_letter.isalpha():
-                    try:
-                        MOVIE_LIST[first_letter].append(url)
-                    except KeyError:
-                        MOVIE_LIST.update({first_letter: []})
-                        MOVIE_LIST[first_letter].append(url)
-                else:
-                    try:
-                        MOVIE_LIST["-"].append(url)
-                    except KeyError:
-                        MOVIE_LIST.update({"-": []})
-                        MOVIE_LIST["-"].append(url)
+            else:
+                url = re.findall(r"href *= *\"(.+?)\"", line)
+                if url:
+                    url = url[0]
 
-    # iterate through every line of series html searching for urls
-    list_started = False
-    for line in series_list_response.iter_lines():
-        line = str(line)
-        # wait for the beggining of the list to be reached
-        if not list_started:
-            if "<b>Animes</b>" in line:
-                list_started = True
+                    # append url to the list corresponding to its first letter
+                    first_letter = url[1]
+                    if first_letter.isalpha():
+                        try:
+                            MOVIE_LIST[first_letter].append(url)
+                        except KeyError:
+                            MOVIE_LIST.update({first_letter: []})
+                            MOVIE_LIST[first_letter].append(url)
+                    else:
+                        try:
+                            MOVIE_LIST["-"].append(url)
+                        except KeyError:
+                            MOVIE_LIST.update({"-": []})
+                            MOVIE_LIST["-"].append(url)
 
-        else:
-            url = re.findall(r"href *= *\"(.+?)\"", line)
-            if url:
-                url = url[0]
+        # iterate through every line of series html searching for urls
+        list_started = False
+        series_list_text = await series_list_response.text()
+        for line in series_list_text.split("\n"):
+            line = str(line)
+            # wait for the beggining of the list to be reached
+            if not list_started:
+                if "<b>Animes</b>" in line:
+                    list_started = True
 
-                # append url to the list corresponding to its first letter
-                first_letter = url[8]
-                if first_letter.isalpha():
-                    try:
-                        SERIES_LIST[first_letter].append(url)
-                    except KeyError:
-                        SERIES_LIST.update({first_letter: []})
-                        SERIES_LIST[first_letter].append(url)
-                else:
-                    try:
-                        SERIES_LIST["-"].append(url)
-                    except KeyError:
-                        SERIES_LIST.update({"-": []})
-                        SERIES_LIST["-"].append(url)
+            else:
+                url = re.findall(r"href *= *\"(.+?)\"", line)
+                if url:
+                    url = url[0]
+
+                    # append url to the list corresponding to its first letter
+                    first_letter = url[8]
+                    if first_letter.isalpha():
+                        try:
+                            SERIES_LIST[first_letter].append(url)
+                        except KeyError:
+                            SERIES_LIST.update({first_letter: []})
+                            SERIES_LIST[first_letter].append(url)
+                    else:
+                        try:
+                            SERIES_LIST["-"].append(url)
+                        except KeyError:
+                            SERIES_LIST.update({"-": []})
+                            SERIES_LIST["-"].append(url)
+
+        movie_list_response.release()
+        series_list_response.release()
 
 
 # TODO: update it to work with pages that don't reset the episode number on each season
 async def get_series_pages(imdb: str, season: int, episode: int):
+    print("get_series_pages")
     info = await IMDB.get(imdb, "pt")
     title = to_kebab_case(info.title)
     first_char = title[0] if title[0].isalpha() else "-"
 
     # parse lists used on the search if not parsed yet
     if not (MOVIE_LIST and SERIES_LIST):
-        parse_media_lists()
+        await parse_media_lists()
 
     # run through the list of series searching for urls that contains the target title
     matches = []
@@ -105,10 +118,11 @@ async def get_series_pages(imdb: str, season: int, episode: int):
             page_url = match
 
     page_url = urljoin(REDECANAIS_URL, page_url)
-    response = requests.get(page_url)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(page_url) as response:
+            html = BeautifulSoup(await decode_from_response(response), "html.parser")
 
     # get the html element containing all episodes
-    html = BeautifulSoup(decode_from_response(response), "html.parser")
     p_list = html.find_all("p")
     episodes_html = ""
     for p in p_list:
@@ -172,7 +186,7 @@ async def get_movie_pages(imdb: str) -> dict:
 
     # parse lists used on the search if not parsed yet
     if not (MOVIE_LIST and SERIES_LIST):
-        parse_media_lists()
+        await parse_media_lists()
 
     # search for the target media
     media_pages = {}

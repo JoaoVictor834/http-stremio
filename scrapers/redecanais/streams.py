@@ -15,7 +15,7 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
     streams = StremioStreamManager()
     if "dub" in pages.keys():
         # get video stream
-        stream_info = player_stream(pages["dub"])
+        stream_info = await player_stream(pages["dub"])
         stream = stream_info.url
         headers = stream_info.headers
 
@@ -29,7 +29,7 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
 
     if "leg" in pages.keys():
         # get video stream
-        stream_info = player_stream(pages["leg"])
+        stream_info = await player_stream(pages["leg"])
         stream = stream_info.url
         headers = stream_info.headers
 
@@ -54,7 +54,7 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
     streams = StremioStreamManager()
     if "dub" in pages.keys():
         # get video stream
-        stream_info = player_stream(pages["dub"])
+        stream_info = await player_stream(pages["dub"])
         stream = stream_info.url
         headers = stream_info.headers
 
@@ -68,7 +68,7 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
 
     if "leg" in pages.keys():
         # get video stream
-        stream_info = player_stream(pages["leg"])
+        stream_info = await player_stream(pages["leg"])
         stream = stream_info.url
         headers = stream_info.headers
 
