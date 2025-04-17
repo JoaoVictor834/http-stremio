@@ -16,6 +16,14 @@ from .decoders import decode_from_response
 MOVIE_LIST = {}
 SERIES_LIST = {}
 
+# media where the imdb title doesn't match the one on the site
+# also used for caching
+MOVIES_JSON = {}
+SERIES_JSON = {
+    "tt0063950": "/browse-scooby-doo-videos-1-date.html",
+    "tt0206512": "/browse-bob-esponja-videos-1-date.html",
+}
+
 
 async def parse_media_lists():
     """Turn list of movies and list of series into dicts grouped by initial letters"""
@@ -96,26 +104,32 @@ async def parse_media_lists():
 
 # TODO: update it to work with pages that don't reset the episode number on each season
 async def get_series_pages(imdb: str, season: int, episode: int):
-    print("get_series_pages")
-    info = await IMDB.get(imdb, "pt")
-    title = to_kebab_case(info.title)
-    first_char = title[0] if title[0].isalpha() else "-"
+    try:
+        page_url = SERIES_JSON[imdb]
 
-    # parse lists used on the search if not parsed yet
-    if not (MOVIE_LIST and SERIES_LIST):
-        await parse_media_lists()
+    except KeyError:
+        print("get_series_pages")
+        info = await IMDB.get(imdb, "pt")
+        title = to_kebab_case(info.title)
+        first_char = title[0] if title[0].isalpha() else "-"
 
-    # run through the list of series searching for urls that contains the target title
-    matches = []
-    for url in SERIES_LIST[first_char]:
-        if title in url:
-            matches.append(url)
+        # parse lists used on the search if not parsed yet
+        if not (MOVIE_LIST and SERIES_LIST):
+            await parse_media_lists()
 
-    # get the match with the lowest amount of chars to remove series with bigger titles that contain the target title
-    page_url = matches[0]
-    for match in matches:
-        if len(match) < len(page_url):
-            page_url = match
+        # run through the list of series searching for urls that contains the target title
+        matches = []
+        for url in SERIES_LIST[first_char]:
+            if title in url:
+                matches.append(url)
+
+        # get the match with the lowest amount of chars to remove series with bigger titles that contain the target title
+        page_url = matches[0]
+        for match in matches:
+            if len(match) < len(page_url):
+                page_url = match
+
+        SERIES_JSON.update({imdb: page_url})
 
     page_url = urljoin(REDECANAIS_URL, page_url)
     async with aiohttp.ClientSession() as session:
@@ -178,23 +192,29 @@ async def get_series_pages(imdb: str, season: int, episode: int):
 
 
 async def get_movie_pages(imdb: str) -> dict:
-    # get information about the target media
-    info = await IMDB.get(imdb, "pt")
-    title = to_kebab_case(info.title)
-    year = str(info.year)
-    first_char = title[0] if title[0].isalpha() else "-"
+    try:
+        media_pages = MOVIE_LIST[imdb]
 
-    # parse lists used on the search if not parsed yet
-    if not (MOVIE_LIST and SERIES_LIST):
-        await parse_media_lists()
+    except KeyError:
+        # get information about the target media
+        info = await IMDB.get(imdb, "pt")
+        title = to_kebab_case(info.title)
+        year = str(info.year)
+        first_char = title[0] if title[0].isalpha() else "-"
 
-    # search for the target media
-    media_pages = {}
-    for url in MOVIE_LIST[first_char]:
-        if title in url and year in url:
-            if "legendado" in url:
-                media_pages.update({"leg": urljoin(REDECANAIS_URL, url)})
-            else:
-                media_pages.update({"dub": urljoin(REDECANAIS_URL, url)})
+        # parse lists used on the search if not parsed yet
+        if not (MOVIE_LIST and SERIES_LIST):
+            await parse_media_lists()
+
+        # search for the target media
+        media_pages = {}
+        for url in MOVIE_LIST[first_char]:
+            if title in url and year in url:
+                if "legendado" in url:
+                    media_pages.update({"leg": urljoin(REDECANAIS_URL, url)})
+                else:
+                    media_pages.update({"dub": urljoin(REDECANAIS_URL, url)})
+
+                MOVIE_LIST.update({imdb: media_pages})
 
     return media_pages
