@@ -9,6 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 
 from scrapers import pobreflix, redecanais
+from scrapers.redecanais.main import parse_media_lists
+
+asyncio.run(parse_media_lists())
 
 
 app = FastAPI(debug=True)
@@ -101,7 +104,7 @@ async def yield_chunks(request: Request, session: aiohttp.ClientSession, respons
     # cleanup
     finally:
         response.release()
-        session.close()
+        await session.close()
 
 
 @app.get("/proxy/")
