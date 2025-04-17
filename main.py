@@ -9,10 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 
 from scrapers import pobreflix, redecanais
-from scrapers.redecanais.main import parse_media_lists
-
-asyncio.run(parse_media_lists())
-
 
 app = FastAPI(debug=True)
 
