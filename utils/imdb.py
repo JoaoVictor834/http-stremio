@@ -5,6 +5,8 @@ import re
 from bs4 import BeautifulSoup
 import aiohttp
 
+from .exceptions import *
+
 
 class IMDB:
     def __init__(self, title, year):
@@ -41,18 +43,18 @@ class IMDB:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
                 "Accept-Language": lang,
             }
-            response = await session.get(imdb_url, headers=headers)
-            if response.status != 200:
-                msg = f"Bad status code when requesting IMDb page. Expected '200', got '{response.status_code}'"
-                raise Exception(msg)
+            async with session.get(imdb_url, headers=headers) as response:
+                if response.status != 200:
+                    msg = f"Bad status code when requesting IMDb page. Expected '200', got '{response.status_code}'"
+                    raise Exception(msg)
 
-            imdb_html = BeautifulSoup(await response.text(), "html.parser")
+                imdb_html = BeautifulSoup(await response.text(), "html.parser")
 
         # get title
         title = imdb_html.find("h1").text
         if not title:
             msg = "Error while parsing IMDb page. Could not find 'title'."
-            raise Exception(msg)
+            raise IMDBParsingError(msg)
 
         # get release year by finding an 'li' element with exactly 4 integers
         year = 0
@@ -66,7 +68,7 @@ class IMDB:
                     year = int(matches[0])
         if not year:
             msg = "Error while parsing IMDb page. Could not find 'year'"
-            raise Exception(msg)
+            raise IMDBParsingError(msg)
 
         return IMDB(title, year)
 
