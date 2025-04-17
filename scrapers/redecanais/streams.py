@@ -5,6 +5,10 @@ from utils.stremio import StremioStreamManager
 from .main import get_movie_pages, get_series_pages
 from .sources import player_stream
 
+HOSTS = [
+    "redecanais.gs",
+]
+
 
 async def movie_streams(imdb: str, use_local_proxy: bool = False):
     try:

@@ -6,6 +6,10 @@ from utils.stremio import StremioStreamManager
 from .main import get_media_pages, get_sources, get_epiosode_url
 from .sources import streamtape_stream
 
+HOSTS = [
+    "streamtape.com",
+]
+
 
 async def movie_streams(imdb: str, use_local_proxy: bool = False):
     try:

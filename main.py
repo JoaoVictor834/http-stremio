@@ -1,3 +1,4 @@
+from urllib.parse import urlparse
 import asyncio
 import ast
 
@@ -9,6 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 
 from scrapers import pobreflix, redecanais
+
+ALLOWED_PROXY_HOSTS = [
+    *redecanais.HOSTS,
+]
 
 app = FastAPI(debug=True)
 
@@ -105,6 +110,11 @@ async def yield_chunks(request: Request, session: aiohttp.ClientSession, respons
 
 @app.get("/proxy/")
 async def read_root(request: Request, url: str, headers: str | None = None):
+    # check if the url host is on the allow list
+    host = urlparse(url).hostname
+    if host not in ALLOWED_PROXY_HOSTS:
+        raise HTTPException(403, "Host not allowed")
+
     # turn request headers into a dict
     request_headers = {key.lower(): request.headers.get(key) for key in request.headers.keys()}
 
