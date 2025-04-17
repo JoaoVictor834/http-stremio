@@ -22,6 +22,7 @@ MOVIES_JSON = {}
 SERIES_JSON = {
     "tt0063950": "/browse-scooby-doo-videos-1-date.html",
     "tt0206512": "/browse-bob-esponja-videos-1-date.html",
+    "tt2861424": "/browse-rick-and-morty-videos-1-date.html",
 }
 
 
