@@ -1,6 +1,7 @@
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 import asyncio
 import ast
+import re
 
 import aiohttp
 import uvicorn
@@ -9,10 +10,19 @@ from fastapi.responses import StreamingResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 
-from scrapers import pobreflix, redecanais
+from scrapers import pobreflix, redecanais, warezcdn
 
 ALLOWED_PROXY_HOSTS = [
     *redecanais.HOSTS,
+    *warezcdn.HOSTS,
+]
+
+HLS_CONTENT_TYPE_HEADERS = [
+    "application/vnd.apple.mpegURL",
+    "application/x-mpegURL",
+    "audio/mpegurl",
+    "audio/x-mpegurl",
+    "text/plain",
 ]
 
 app = FastAPI(debug=True)
@@ -51,6 +61,7 @@ async def movie_stream(request: Request):
     tasks = [
         pobreflix.movie_streams(id),
         redecanais.movie_streams(id, True),
+        warezcdn.movie_streams(id, True),
     ]
     results = await asyncio.gather(*tasks)
     streams = []
@@ -108,6 +119,27 @@ async def yield_chunks(request: Request, session: aiohttp.ClientSession, respons
         await session.close()
 
 
+def add_proxy_to_hls_parts(m3u8_content: str, headers: dict | None = None):
+    if headers is None:
+        headers = {}
+
+    lines = m3u8_content.split("\n")
+    for i, line in enumerate(lines):
+        url_matches = re.match(r"https?://[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,})(:\d+)?(/[^\s]*)?", line)
+        if url_matches:
+            # update url to use the local proxy
+            url = url_matches[0]
+            query = urlencode({"url": url, "headers": headers})
+            lines[i] = f"?{query}"
+
+            # add host of the part url to the list of allowed hosts
+            host = urlparse(url).hostname
+            if host not in ALLOWED_PROXY_HOSTS:
+                ALLOWED_PROXY_HOSTS.append(host)
+
+    return "\n".join(lines)
+
+
 @app.get("/proxy/")
 async def read_root(request: Request, url: str, headers: str | None = None):
     # check if the url host is on the allow list
@@ -142,12 +174,22 @@ async def read_root(request: Request, url: str, headers: str | None = None):
     if "access-control-allow-origin" in response_headers.keys():
         response_headers.update({"access-control-allow-origin": "*"})
 
-    # return stream
-    return StreamingResponse(
-        yield_chunks(request, session, response),
-        headers=response_headers,
-        status_code=response.status,
-    )
+    # modify hls streams to use local proxy
+    if response_headers["content-type"] in HLS_CONTENT_TYPE_HEADERS:
+        updated_content = add_proxy_to_hls_parts(await response.text())
+        return Response(
+            updated_content,
+            response.status,
+            headers=response_headers,
+        )
+
+    else:
+        # return stream
+        return StreamingResponse(
+            yield_chunks(request, session, response),
+            headers=response_headers,
+            status_code=response.status,
+        )
 
 
 if __name__ == "__main__":
