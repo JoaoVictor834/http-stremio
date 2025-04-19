@@ -22,19 +22,20 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
                     tasks.append(warezcdn_stream(imdb, "filme", audio))
 
         stream_info_list = await asyncio.gather(*tasks)
+
+        streams = StremioStreamManager()
+        if not use_local_proxy:
+            for stream_info in stream_info_list:
+                streams.add_stream(stream_info.name, stream_info.title, stream_info.url, False, stream_info.headers)
+        else:
+            for stream_info in stream_info_list:
+                query = urlencode({"url": stream_info.url, "headers": stream_info.headers})
+                streams.add_stream(stream_info.name, stream_info.title, f"https://127.0.0.1:6222/proxy/?{query}")
+
+        return streams.to_list()
+
     except:
-        pass
-
-    streams = StremioStreamManager()
-    if not use_local_proxy:
-        for stream_info in stream_info_list:
-            streams.add_stream(stream_info.name, stream_info.title, stream_info.url, False, stream_info.headers)
-    else:
-        for stream_info in stream_info_list:
-            query = urlencode({"url": stream_info.url, "headers": stream_info.headers})
-            streams.add_stream(stream_info.name, stream_info.title, f"https://127.0.0.1:6222/proxy/?{query}")
-
-    return streams.to_list()
+        return []
 
 
 async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: bool = False):
@@ -49,16 +50,17 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
                     tasks.append(warezcdn_stream(imdb, "filme", audio))
 
         stream_info_list = await asyncio.gather(*tasks)
+
+        streams = StremioStreamManager()
+        if not use_local_proxy:
+            for stream_info in stream_info_list:
+                streams.add_stream(stream_info.name, stream_info.title, stream_info.url, False, stream_info.headers)
+        else:
+            for stream_info in stream_info_list:
+                query = urlencode({"url": stream_info.url, "headers": stream_info.headers})
+                streams.add_stream(stream_info.name, stream_info.title, f"https://127.0.0.1:6222/proxy/?{query}")
+
+        return streams.to_list()
+
     except:
-        pass
-
-    streams = StremioStreamManager()
-    if not use_local_proxy:
-        for stream_info in stream_info_list:
-            streams.add_stream(stream_info.name, stream_info.title, stream_info.url, False, stream_info.headers)
-    else:
-        for stream_info in stream_info_list:
-            query = urlencode({"url": stream_info.url, "headers": stream_info.headers})
-            streams.add_stream(stream_info.name, stream_info.title, f"https://127.0.0.1:6222/proxy/?{query}")
-
-    return streams.to_list()
+        return []
