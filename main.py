@@ -81,6 +81,7 @@ async def series_stream(request: Request):
     tasks = [
         pobreflix.series_stream(id, season, episode),
         redecanais.series_stream(id, season, episode, True),
+        warezcdn.series_stream(id, season, episode, True),
     ]
     results = await asyncio.gather(*tasks)
     streams = []
