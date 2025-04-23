@@ -1,5 +1,5 @@
 class StremioStream:
-    def __init__(self, name: str, title: str, url: str, not_web_ready: bool = False, headers: dict | None = None):
+    def __init__(self, url: str, headers: dict | None = None, name: str = "", title: str = "", not_web_ready: bool = False):
         self.name = name
         self.title = title
         self.url = url
@@ -23,10 +23,9 @@ class StremioStream:
 
 class StremioStreamManager:
     def __init__(self):
-        self.streams = []
+        self.streams: list[StremioStream] = []
 
-    def add_stream(self, name: str, title: str, url: str, not_web_ready: bool = False, headers: dict | None = None):
-        stream = StremioStream(name, title, url, not_web_ready, headers)
+    def append(self, stream: StremioStream):
         self.streams.append(stream)
 
     def to_list(self):
@@ -34,13 +33,3 @@ class StremioStreamManager:
 
     def to_dict(self):
         return {"streams": self.to_list()}
-
-
-if __name__ == "__main__":
-    streams = StremioStreamManager()
-    streams.add_stream("name", "title", "https://example.com")
-    streams.add_stream("name1", "title1", "https://example1.com")
-
-    from pprint import pprint
-
-    pprint(streams.to_dict())

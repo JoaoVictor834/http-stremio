@@ -1,25 +1,17 @@
 # functions to extract stream links from site sources
 
-import typing
 import re
 
 import aiohttp
 from bs4 import BeautifulSoup
 
+from utils.stremio import StremioStream
 from .exceptions import *
-
-
-class StreamInfo:
-    def __init__(self, url: str, headers: dict | None = None):
-        self.url = url
-        if headers is None:
-            headers = {}
-        self.headers = headers
 
 
 class StreamtapeStream:
     @classmethod
-    async def get(cls, streamtape_url: str) -> StreamInfo:
+    async def get(cls, streamtape_url: str) -> StremioStream:
         async with aiohttp.ClientSession() as session:
             # get video page
             headers = {
@@ -63,11 +55,11 @@ class StreamtapeStream:
                 stream_url = "https://" + start + end[offset - 1 :]
 
         if stream_url:
-            return StreamInfo(stream_url)
+            return StremioStream(stream_url)
         else:
             msg = "Error extracting stream url from streamtape"
             raise StreamtapeParsingError(msg)
 
 
-async def streamtape_stream(streamtape_url: str):
+async def streamtape_stream(streamtape_url: str) -> StremioStream:
     return await StreamtapeStream.get(streamtape_url)

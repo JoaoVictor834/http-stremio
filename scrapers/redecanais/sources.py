@@ -6,20 +6,13 @@ import re
 from bs4 import BeautifulSoup
 import aiohttp
 
+from utils.stremio import StremioStream
 from .utils import convert_to_punycode
 from .decoders import decode_from_response
 from .exceptions import *
 
 REDECANAIS_URL = "https://redecanais.ec"
 VIDEO_HOST_URL = "https://xn----------------g34l3fkp7msh1cj3acobj33ac2a7a8lufomma7cf2b1sh.xn---1l1--5o4dxb.xn---22--11--33--99--75---------b25zjf3lta6mwf6a47dza94e.xn--pck.xn--zck.xn--0ck.xn--pck.xn--yck.xn-----0b4asja8cbew2b4b0gd0edbjm2jpa1b1e9zva7a0347s4da2797e7qri.xn--1ck2e1b/player3"
-
-
-class StreamInfo:
-    def __init__(self, url: str, headers: dict | None = None):
-        self.url = url
-        if headers is None:
-            headers = {}
-        self.headers = headers
 
 
 class DownloadStream:
@@ -99,7 +92,7 @@ class DownloadStream:
                 raise DownloadPageParsingError(msg)
 
     @classmethod
-    async def get(cls, video_page_url: str) -> StreamInfo:
+    async def get(cls, video_page_url: str) -> StremioStream:
         video_player_url = await cls.get_video_player_url(video_page_url)
         download_page_url = await cls.get_download_page_url(video_player_url)
         stream = await cls.get_download_stream_url(download_page_url)
@@ -108,7 +101,7 @@ class DownloadStream:
             "Referer": download_page_url,
         }
 
-        return StreamInfo(stream, headers=headers)
+        return StremioStream(stream, headers=headers)
 
 
 class PlayerStream:
@@ -181,12 +174,12 @@ class PlayerStream:
 
         headers = {"Referer": fromated_video_url}
 
-        return StreamInfo(stream, headers=headers)
+        return StremioStream(stream, headers=headers)
 
 
-async def download_stream(video_page_url: str) -> StreamInfo:
+async def download_stream(video_page_url: str) -> StremioStream:
     return await DownloadStream.get(video_page_url)
 
 
-async def player_stream(video_page_url: str) -> StreamInfo:
+async def player_stream(video_page_url: str) -> StremioStream:
     return await PlayerStream.get(video_page_url)

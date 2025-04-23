@@ -5,17 +5,8 @@ import re
 
 import aiohttp
 
+from utils.stremio import StremioStream
 from .main import EMBED_URL, USER_AGENT, AudioData
-
-
-class StreamInfo:
-    def __init__(self, url: str, headers: dict | None = None, name: str = "", title: str = ""):
-        self.url = url
-        self.name = name
-        self.title = title
-        if headers is None:
-            headers = {}
-        self.headers = headers
 
 
 class WarezcdnStream:
@@ -52,7 +43,7 @@ class WarezcdnStream:
                     return video_url
 
     @classmethod
-    async def get_stream(cls, video_url: str) -> StreamInfo:
+    async def get_stream(cls, video_url: str) -> StremioStream:
         async with aiohttp.ClientSession() as session:
             # exctract relevant information from stream
             video_host_url = re.findall(r"(https://.+?)/", video_url)[0]
@@ -83,7 +74,7 @@ class WarezcdnStream:
                         stream_url = matches[0]
                         break
 
-            return StreamInfo(stream_url, headers={"origin": "https://basseqwevewcewcewecwcw.xyz"})
+            return StremioStream(stream_url, headers={"origin": "https://basseqwevewcewcewecwcw.xyz"})
 
     @classmethod
     async def get(
@@ -91,18 +82,18 @@ class WarezcdnStream:
         imdb: str,
         type: typing.Literal["filme", "serie"],
         audio_data: AudioData,
-    ) -> StreamInfo:
+    ) -> StremioStream:
         video_url = await cls.get_video_url(imdb, type, audio_data)
         stream_info = await cls.get_stream(video_url)
 
         name = "Warezcdn"
         title = f"Warezcdn ({'LEG' if audio_data["audio"] == '1' else 'DUB'})"
-        return StreamInfo(stream_info.url, stream_info.headers, name, title)
+        return StremioStream(stream_info.url, headers=stream_info.headers, name=name, title=title)
 
 
 async def warezcdn_stream(
     imdb: str,
     type: typing.Literal["filme", "serie"],
     audio_data: AudioData,
-) -> StreamInfo:
+) -> StremioStream:
     return await WarezcdnStream.get(imdb, type, audio_data)

@@ -1,7 +1,7 @@
 from urllib.parse import urlencode
 import asyncio
 
-from utils.stremio import StremioStreamManager
+from utils.stremio import StremioStream, StremioStreamManager
 from .main import get_movie_audios, get_series_audios
 from .sources import warezcdn_stream
 
@@ -21,20 +21,22 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
                 if server == "warezcdn":
                     tasks.append(warezcdn_stream(imdb, "filme", audio))
 
-        stream_info_list = await asyncio.gather(*tasks)
+        stream_info_list: list[StremioStream] = await asyncio.gather(*tasks)
 
         streams = StremioStreamManager()
         if not use_local_proxy:
-            for stream_info in stream_info_list:
-                streams.add_stream(stream_info.name, stream_info.title, stream_info.url, False, stream_info.headers)
+            for stream in stream_info_list:
+                streams.append(stream)
         else:
-            for stream_info in stream_info_list:
-                query = urlencode({"url": stream_info.url, "headers": stream_info.headers})
-                streams.add_stream(stream_info.name, stream_info.title, f"https://127.0.0.1:6222/proxy/?{query}")
+            for stream in stream_info_list:
+                query = urlencode({"url": stream.url, "headers": stream.headers})
+                stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name=stream.name, title=stream.title)
+                streams.append(stream)
 
         return streams.to_list()
 
-    except:
+    except Exception as e:
+        print(f"Exception raised in warezcdn scraper! {e.__class__.__name__}: {e}")
         return []
 
 
@@ -49,18 +51,20 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
                 if server == "warezcdn":
                     tasks.append(warezcdn_stream(imdb, "filme", audio))
 
-        stream_info_list = await asyncio.gather(*tasks)
+        stream_info_list: list[StremioStream] = await asyncio.gather(*tasks)
 
         streams = StremioStreamManager()
         if not use_local_proxy:
-            for stream_info in stream_info_list:
-                streams.add_stream(stream_info.name, stream_info.title, stream_info.url, False, stream_info.headers)
+            for stream in stream_info_list:
+                streams.append(stream)
         else:
-            for stream_info in stream_info_list:
-                query = urlencode({"url": stream_info.url, "headers": stream_info.headers})
-                streams.add_stream(stream_info.name, stream_info.title, f"https://127.0.0.1:6222/proxy/?{query}")
+            for stream in stream_info_list:
+                query = urlencode({"url": stream.url, "headers": stream.headers})
+                stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name=stream.name, title=stream.title)
+                streams.append(stream)
 
         return streams.to_list()
 
-    except:
+    except Exception as e:
+        print(f"Exception raised in warezcdn scraper! {e.__class__.__name__}: {e}")
         return []
