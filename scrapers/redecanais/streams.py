@@ -11,7 +11,7 @@ HOSTS = [
 ]
 
 
-async def movie_streams(imdb: str, use_local_proxy: bool = False):
+async def movie_streams(imdb: str, proxy_url: str | None = None):
     try:
         pages = await get_movie_pages(imdb)
 
@@ -20,21 +20,21 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
             # get video stream
             stream = await player_stream(pages["dub"])
 
-            if not use_local_proxy:
+            if proxy_url is None:
                 # create formated stream json
                 stream = StremioStream(stream.url, headers=stream.headers, name="Redecanais", title="Redecanais (DUB)")
                 streams.append(stream)
             else:
                 # create formated stream json using proxy
                 query = urlencode({"url": stream.url, "headers": stream.headers})
-                stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Redecanais", title="Redecanais (DUB)")
+                stream = StremioStream(f"{proxy_url}?{query}", name="Redecanais", title="Redecanais (DUB)")
                 streams.append(stream)
 
         if "leg" in pages.keys():
             # get video stream
             stream = await player_stream(pages["leg"])
 
-            if not use_local_proxy:
+            if proxy_url is None:
                 # create formated stream json
                 stream = StremioStream(stream.url, stream.headers, name="Redecanais", title="Redecanais (LEG)")
                 streams.append(stream)
@@ -42,7 +42,7 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
             else:
                 # create formated stream json using proxy
                 query = urlencode({"url": stream.url, "headers": stream.headers})
-                stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Redecanais", title="Redecanais (LEG)")
+                stream = StremioStream(f"{proxy_url}?{query}", name="Redecanais", title="Redecanais (LEG)")
                 streams.append(stream)
 
         return streams.to_list()
@@ -52,7 +52,7 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
         return []
 
 
-async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: bool = False):
+async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | None = None):
     try:
         pages = await get_series_pages(imdb, season, episode)
 
@@ -61,21 +61,21 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
             # get video stream
             stream = await player_stream(pages["dub"])
 
-            if not use_local_proxy:
+            if proxy_url is None:
                 # create formated stream json
                 stream = StremioStream(stream.url, headers=stream.headers, name="Redecanais", title="Redecanais (DUB)")
                 streams.append(stream)
             else:
                 # create formated stream json using proxy
                 query = urlencode({"url": stream.url, "headers": stream.headers})
-                stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Redecanais", title="Redecanais (DUB)")
+                stream = StremioStream(f"{proxy_url}?{query}", name="Redecanais", title="Redecanais (DUB)")
                 streams.append(stream)
 
         if "leg" in pages.keys():
             # get video stream
             stream = await player_stream(pages["leg"])
 
-            if not use_local_proxy:
+            if proxy_url is None:
                 # create formated stream json
                 stream = StremioStream(stream.url, stream.headers, name="Redecanais", title="Redecanais (LEG)")
                 streams.append(stream)
@@ -83,7 +83,7 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
             else:
                 # create formated stream json using proxy
                 query = urlencode({"url": stream.url, "headers": stream.headers})
-                stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Redecanais", title="Redecanais (LEG)")
+                stream = StremioStream(f"{proxy_url}?{query}", name="Redecanais", title="Redecanais (LEG)")
                 streams.append(stream)
 
         return streams.to_list()

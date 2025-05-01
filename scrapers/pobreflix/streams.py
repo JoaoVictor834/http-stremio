@@ -11,7 +11,7 @@ HOSTS = [
 ]
 
 
-async def movie_streams(imdb: str, use_local_proxy: bool = False):
+async def movie_streams(imdb: str, proxy_url: str | None = None):
     try:
         pages = await get_media_pages(imdb)
 
@@ -24,12 +24,12 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
             try:
                 stream = await streamtape_stream(dub_sources["streamtape"])
 
-                if not use_local_proxy:
+                if proxy_url is None:
                     stream = StremioStream(stream.url, headers=stream.headers, name="Pobreflix", title="Streamtape (DUB)")
                     streams.append(stream)
                 else:
                     query = urlencode({"url": stream.url, "headers": stream.headers})
-                    stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Pobreflix", title="Streamtape (DUB)")
+                    stream = StremioStream(f"{proxy_url}?{query}", name="Pobreflix", title="Streamtape (DUB)")
                     streams.append(stream)
             except:
                 pass
@@ -42,12 +42,12 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
             try:
                 stream = await streamtape_stream(leg_sources["streamtape"])
 
-                if not use_local_proxy:
+                if proxy_url is None:
                     stream = StremioStream(stream.url, headers=stream.headers, name="Pobreflix", title="Streamtape (LEG)")
                     streams.append(stream)
                 else:
                     query = urlencode({"url": stream.url, "headers": stream.headers})
-                    stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Pobreflix", title="Streamtape (LEG)")
+                    stream = StremioStream(f"{proxy_url}?{query}", name="Pobreflix", title="Streamtape (LEG)")
                     streams.append(stream)
             except:
                 pass
@@ -60,7 +60,7 @@ async def movie_streams(imdb: str, use_local_proxy: bool = False):
         return []
 
 
-async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: bool = False):
+async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | None = None):
     try:
         pages = await get_media_pages(imdb)
 
@@ -75,12 +75,12 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
                 try:
                     stream = await streamtape_stream(dub_sources["streamtape"])
 
-                    if not use_local_proxy:
+                    if proxy_url is None:
                         stream = StremioStream(stream.url, stream.headers, name="Pobreflix", title="Streamtape (DUB)")
                         streams.append(stream)
                     else:
                         query = urlencode({"url": stream.url, "headers": stream.headers})
-                        stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Pobreflix", title="Streamtape (DUB)")
+                        stream = StremioStream(f"{proxy_url}?{query}", name="Pobreflix", title="Streamtape (DUB)")
                         streams.append(stream)
                 except:
                     pass
@@ -95,12 +95,12 @@ async def series_stream(imdb: str, season: int, episode: int, use_local_proxy: b
                 try:
                     stream = await streamtape_stream(leg_sources["streamtape"])
 
-                    if not use_local_proxy:
+                    if proxy_url is None:
                         stream = StremioStream(stream.url, stream.headers, name="Pobreflix", title="Streamtape (LEG)")
                         streams.append(stream)
                     else:
                         query = urlencode({"url": stream.url, "headers": stream.headers})
-                        stream = StremioStream(f"https://127.0.0.1:6222/proxy/?{query}", name="Pobreflix", title="Streamtape (LEG)")
+                        stream = StremioStream(f"{proxy_url}?{query}", name="Pobreflix", title="Streamtape (LEG)")
                         streams.append(stream)
                 except:
                     pass
