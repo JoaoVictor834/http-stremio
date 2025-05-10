@@ -8,3 +8,11 @@ class ServerFormsParsingError(Exception):
 
 class DownloadPageParsingError(Exception):
     """Could not extract download page url from serverforms html"""
+
+
+class EncodedParsingError(Exception):
+    """Error parsing the raw list of encoded chars"""
+
+
+class DecoderError(Exception):
+    """Something went wrong when decoding with the given payload and key"""
