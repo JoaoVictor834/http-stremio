@@ -20,10 +20,18 @@ MOVIE_LIST = {}
 # also used for caching
 module_path = os.path.dirname(__file__)
 with open(os.path.join(module_path, "data/movies.json"), "r", encoding="utf8") as f:
-    MOVIES_JSON = json.loads(f.read())
+    MOVIES_JSON: dict = json.loads(f.read())
 
 with open(os.path.join(module_path, "data/series.json"), "r", encoding="utf8") as f:
-    SERIES_JSON = json.loads(f.read())
+    SERIES_JSON: dict = json.loads(f.read())
+
+# add individual json files from data/series to SERIES_JSON
+series_jsons_folder = os.path.join(module_path, "data/series")
+series_jsons_list = os.listdir(series_jsons_folder)
+for file in series_jsons_list:
+    with open(os.path.join(series_jsons_folder, file)) as f:
+        json_data = json.loads(f.read())
+        SERIES_JSON.update(json_data)
 
 
 async def parse_movie_list():
