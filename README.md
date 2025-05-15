@@ -39,6 +39,6 @@ pip install -r requirements.txt
 # Como usar
 1. Execute o seguinte comando para iniciar o servidor:
 ```console
-python main.py
+python main.py https
 ```
 2. Instale o addon através da url `https://127.0.0.1:6222/manifest.json`
