@@ -7,10 +7,10 @@ Execute o seguinte comando para instalar o openssl usando Chocolatey:
 choco install openssl
 ```
 #### Instalação Manual
-TODO
+Acesse a [seção de binários](https://github.com/openssl/openssl/wiki/Binaries) da wiki da ferramenta e escolha uma das fontes. Lembre-se de garantir que o executável esteja disponível em PATH antes de seguir para as próximas etapas.
 
 ### 2. Crie um certificado autoassinado
-1. Navegue ao diretório onde o arquivo `ssl.conf` está localizado e execute o seguinte comando:
+Navegue ao diretório onde o arquivo `ssl.conf` está localizado e execute o seguinte comando:
 ```console
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout localhost.key -out localhost.crt -config ssl.conf -extensions v3_req
 ```
@@ -30,15 +30,31 @@ Isso criará os arquivos `localhost.crt` e `localhost.key`.
 3. Clique com o botão direito em `Certificados` e selecione `Todas as Tarefas` > `Importar`
 4. Navegue até o arquivo contendo o certificado e confirme sua instalação no repositório `Autoridades de Certificação Raiz Confiáveis`
 
-### 4. Instalar dependências
-1. Execute o seguinte comando para instalar as dependências:
+### 4. Instale a ferramenta uv
+#### winget
+Execute o seguinte comando para instalar a ferramenta uv usando winget:
 ```console
-pip install -r requirements.txt
+winget install --id=astral-sh.uv  -e
+```
+
+#### pip
+Execute o seguinte comando para instalar a ferramenta uv usando pip:
+```console
+pip install uv
+```
+
+#### Outros métodos
+Escolha alguma das várias opções de instalação disponíveis no [site da ferramenta](https://docs.astral.sh/uv/getting-started/installation/#installation-methods).
+
+### 5. Instale as dependências do projeto
+Execute o seguinte comando para instalar as dependências usando a ferramenta uv:
+```console
+uv sync
 ```
 
 # Como usar
-1. Execute o seguinte comando para iniciar o servidor:
+1. Navegue ao diretório onde o arquivo `main.py` está localizado e execute o seguinte comando para iniciar o servidor:
 ```console
-python main.py https
+uv run main.py https
 ```
 2. Instale o addon através da url `https://127.0.0.1:6222/manifest.json`
