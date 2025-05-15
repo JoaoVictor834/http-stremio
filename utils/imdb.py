@@ -33,7 +33,7 @@ class IMDB:
         try:
             lang = accept_languages[lang]
         except KeyError:
-            msg = f"Invalid value for attribute 'lang'. Got '{lang}', expected any of the following: {["en", "fr", "de", "es", "pt", "ja", "zh"]}"
+            msg = f"Invalid value for attribute 'lang'. Got '{lang}', expected any of the following: ['en', 'fr', 'de', 'es', 'pt', 'ja', 'zh']"
             raise AttributeError(msg)
 
         # get media page
