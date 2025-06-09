@@ -154,9 +154,16 @@ def add_proxy_to_hls_parts(m3u8_content: str, headers: dict | None = None):
 @app.get("/proxy/")
 async def read_root(request: Request, url: str, headers: str | None = None):
     # check if the url host is on the allow list
+    global ALLOWED_PROXY_HOSTS
     host = urlparse(url).hostname
     if host not in ALLOWED_PROXY_HOSTS:
-        raise HTTPException(403, "Host not allowed")
+        # reload hosts and try again
+        ALLOWED_PROXY_HOSTS = [
+            *redecanais.HOSTS,
+            *warezcdn.HOSTS,
+        ]
+        if host not in ALLOWED_PROXY_HOSTS:
+            raise HTTPException(403, "Host not allowed")
 
     # turn request headers into a dict
     request_headers = {key.lower(): request.headers.get(key) for key in request.headers.keys()}

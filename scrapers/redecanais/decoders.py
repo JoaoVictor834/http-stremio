@@ -62,13 +62,45 @@ def parse_payload_str(payload_str: str):
         raise EncodedParsingError(msg)
 
 
-async def decode_from_response(response: aiohttp.ClientResponse):
-    html = BeautifulSoup(await response.text(), "html.parser")
-    try:
-        scripts = html.find_all("script")
-        main_script = scripts[1]
-    except IndexError:
-        main_script = scripts[0]
+def decode_from_text(html_text: str, script_index: int | None = None):
+    html = BeautifulSoup(html_text, "html.parser")
+
+    scripts = html.find_all("script")
+    if script_index is None:
+        try:
+            main_script = scripts[1]
+        except IndexError:
+            main_script = scripts[0]
+    else:
+        main_script = scripts[script_index]
 
     payload, key = parse_payload_str(main_script.text)
     return decode_redecanais(payload, key)
+
+
+async def decode_from_response(response: aiohttp.ClientResponse, script_index: int | None = None):
+    html_text = await response.text()
+
+    return decode_from_text(html_text, script_index)
+
+
+def decode_redecanais_simplified(payload_str: str):
+    # remove everything outside the integer list
+    payload_str = payload_str.split("[")[1]
+    payload_str = payload_str.split("]")[0]
+
+    # get list of integers
+    int_list = re.findall(r"\b\d+\b", payload_str)
+
+    # decode
+    decoded_chars = [chr(int(i)) for i in int_list]
+    decoded_str = "".join(decoded_chars)  # join chars
+    decoded_str = decoded_str.replace("\\/", "/").encode().decode("unicode-escape")  # escape special chars
+
+    return decoded_str
+
+
+def decode_videojs(payload_str: str):
+    payload_str = base64.b64decode(payload_str.encode()).decode()
+
+    return decode_redecanais_simplified(payload_str)

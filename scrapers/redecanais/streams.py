@@ -4,11 +4,7 @@ from urllib.parse import urlencode
 
 from utils.stremio import StremioStream, StremioStreamManager
 from .main import get_movie_pages, get_series_pages
-from .sources import player_stream
-
-HOSTS = [
-    "redecanais.gs",
-]
+from .sources import player_stream, HOSTS
 
 
 async def movie_streams(imdb: str, proxy_url: str | None = None):
@@ -89,5 +85,8 @@ async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | N
         return streams.to_list()
 
     except Exception as e:
+        import traceback
+
         print(f"Exception raised in redecanais scraper! {e.__class__.__name__}: {e}")
+        traceback.print_exc()
         return []
