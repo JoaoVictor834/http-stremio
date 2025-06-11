@@ -38,7 +38,7 @@ async def parse_movie_list():
     """Turn list of movies and list of series into dicts grouped by initial letters"""
     print("parse_media_lists")
     async with aiohttp.ClientSession() as session:
-        async with session.get(urljoin(REDECANAIS_URL, "mapafilmes.html")) as movie_list_response:
+        async with session.get(urljoin(REDECANAIS_URL, "final_mapafilmes.txt")) as movie_list_response:
             # iterate through every line of movies html searching for urls
             list_started = False
             movie_list_text = await movie_list_response.text()
