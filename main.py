@@ -1,5 +1,6 @@
 from urllib.parse import urlparse, urlencode
 import asyncio
+import json
 import ast
 import re
 
@@ -211,6 +212,58 @@ async def read_root(request: Request, url: str, headers: str | None = None):
             headers=response_headers,
             status_code=response.status,
         )
+
+
+@app.get("/")
+async def index_html(request: Request):
+    with open("selected-media.json", "r", encoding="utf8") as f:
+        selected_media = json.loads(f.read())
+
+    data = {
+        "selected_movies": selected_media["movies"],
+        "selected_series": selected_media["series"],
+    }
+
+    template = templates.get_template("index.html")
+    return HTMLResponse(template.render(data))
+
+
+@app.get("/movie/{id}")
+async def movie_html(request: Request):
+    id = request.path_params.get("id")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://v3-cinemeta.strem.io/meta/movie/{id}.json") as response:
+            series_data = await response.json()
+
+    # get remaining variables
+    name = series_data["meta"]["name"]
+    background = series_data["meta"]["background"]
+    poster = series_data["meta"]["poster"]
+    logo = series_data["meta"]["logo"]
+
+    template = templates.get_template("movie.html")
+    data = {
+        "name": name,
+        "logo": logo,
+        "poster": poster,
+        "background": background,
+        "id": id,
+    }
+    return HTMLResponse(template.render(data))
+
+
+@app.get("/watch/movie/{id}/")
+async def movie_watch_html(request: Request):
+    # mount proxy url with the same url used to acces the server
+    proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
+
+    # get variables
+    id = request.path_params.get("id")
+
+    streams = await redecanais.movie_streams(id, proxy_url=proxy_url)
+    stream = streams[0]["url"]
+
+    return RedirectResponse(stream)
 
 
 @app.get("/series/{id}/")
