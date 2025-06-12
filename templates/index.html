@@ -226,7 +226,8 @@
                 {% for series in selected_series %}
                 <a href="/series/{{series.id}}">
                     <div class="content-card">
-                        <img src="https://live.metahub.space/poster/small/{{series.id}}/img" alt="{{series.name}}">
+                        <img src="/proxy/cache/?url=https://live.metahub.space/poster/small/{{series.id}}/img"
+                            alt="{{series.name}}">
                         <div class="content-info">
                             <div class="content-type">TV SERIES</div>
                             <div class="content-name">{{series.name}}</div>
@@ -251,7 +252,8 @@
                 {% for movie in selected_movies %}
                 <a href="/movie/{{movie.id}}">
                     <div class="content-card">
-                        <img src="https://live.metahub.space/poster/small/{{movie.id}}/img" alt="{{movie.name}}">
+                        <img src="/proxy/cache/?url=https://live.metahub.space/poster/small/{{movie.id}}/img"
+                            alt="{{movie.name}}">
                         <div class="content-info">
                             <div class="content-type">MOVIE</div>
                             <div class="content-name">{{movie.name}}</div>

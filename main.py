@@ -1,13 +1,16 @@
 from urllib.parse import urlparse, urlencode
 import asyncio
+import hashlib
 import json
 import ast
 import re
+import os
 
+import aiofiles
 import aiohttp
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse, Response, HTMLResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, JSONResponse, Response, HTMLResponse, RedirectResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 from jinja2 import Environment, FileSystemLoader
@@ -16,10 +19,23 @@ from scrapers import pobreflix, redecanais, warezcdn
 
 templates = Environment(loader=FileSystemLoader("templates"))
 
-ALLOWED_PROXY_HOSTS = [
-    *redecanais.HOSTS,
-    *warezcdn.HOSTS,
-]
+
+ALLOWED_PROXY_HOSTS = {}
+
+
+def update_allowed_hosts():
+    global ALLOWED_PROXY_HOSTS
+    ALLOWED_PROXY_HOSTS = [
+        "live.metahub.space",
+        "images.metahub.space",
+        "episodes.metahub.space",
+        *redecanais.HOSTS,
+        *warezcdn.HOSTS,
+    ]
+
+
+CACHE_DIR = "cache/"
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 HLS_CONTENT_TYPE_HEADERS = [
     "application/vnd.apple.mpegURL",
@@ -162,10 +178,7 @@ async def read_root(request: Request, url: str, headers: str | None = None):
     host = urlparse(url).hostname
     if host not in ALLOWED_PROXY_HOSTS:
         # reload hosts and try again
-        ALLOWED_PROXY_HOSTS = [
-            *redecanais.HOSTS,
-            *warezcdn.HOSTS,
-        ]
+        update_allowed_hosts()
         if host not in ALLOWED_PROXY_HOSTS:
             raise HTTPException(403, "Host not allowed")
 
@@ -216,8 +229,8 @@ async def read_root(request: Request, url: str, headers: str | None = None):
 
 @app.get("/")
 async def index_html(request: Request):
-    with open("selected-media.json", "r", encoding="utf8") as f:
-        selected_media = json.loads(f.read())
+    async with aiofiles.open("selected-media.json", "r", encoding="utf8") as f:
+        selected_media = json.loads(await f.read())
 
     data = {
         "selected_movies": selected_media["movies"],
@@ -324,10 +337,37 @@ async def series_html_watch(request: Request):
     episode = int(request.path_params.get("episode"))
 
     streams = await redecanais.series_stream(id, season, episode, proxy_url=proxy_url)
-    print(streams)
     stream = streams[0]["url"]
 
     return RedirectResponse(stream)
+
+
+@app.get("/proxy/cache/")
+async def proxy_image(request: Request, url: str):
+    # check if the url host is on the allow list
+    global ALLOWED_PROXY_HOSTS
+    host = urlparse(url).hostname
+    if host not in ALLOWED_PROXY_HOSTS:
+        # reload hosts and try again
+        update_allowed_hosts()
+        if host not in ALLOWED_PROXY_HOSTS:
+            raise HTTPException(403, "Host not allowed")
+
+    # get url hash
+    url_hash = hashlib.md5()
+    url_hash.update(url.encode())
+    url_hash = url_hash.hexdigest()
+
+    # download the file if it's not cached already
+    cache_path = os.path.join(CACHE_DIR, url_hash)
+    if not os.path.exists(cache_path):
+        async with aiofiles.open(cache_path, "wb") as cache_file:
+            async with aiohttp.ClientSession() as session:
+                file_response = await session.get(url)
+                async for chunk in file_response.content.iter_chunked(1024):
+                    await cache_file.write(chunk)
+
+    return FileResponse(cache_path)
 
 
 if __name__ == "__main__":

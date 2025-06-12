@@ -298,10 +298,10 @@
         <section class="hero">
             <div class="hero-content">
                 <div class="poster-container">
-                    <img src="{{poster}}" alt="{{name}} poster">
+                    <img src="/proxy/cache/?url={{poster}}" alt="{{name}} poster">
                 </div>
                 <div class="info">
-                    <img src="{{logo}}" alt="{{name}} logo" class="logo">
+                    <img src="/proxy/cache/?url={{logo}}" alt="{{name}} logo" class="logo">
                     {# <h1>{{name}}</h1> #}
                 </div>
             </div>
@@ -322,7 +322,7 @@
                     {% for episode in season.episodes %}
                     <a href="/watch/series/{{id}}/{{season.number}}/{{episode.number}}/" target="_blank">
                         <div class="episode-card" id="ep-{{season.number}}x{{episode.number}}">
-                            <img src="{{episode.image}}" alt="{{episode.title}}">
+                            <img src="/proxy/cache/?url={{episode.image}}" alt="{{episode.title}}">
                             <div class="episode-info">
                                 <div class="episode-number">S{{season.number}} · E{{episode.number}}</div>
                                 <div class="episode-title">{{episode.title}}</div>
