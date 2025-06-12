@@ -267,6 +267,8 @@ async def movie_html(request: Request):
 
 @app.get("/watch/movie/{id}/")
 async def movie_watch_html(request: Request):
+    user_agent = request.headers.get("user-agent")
+
     # mount proxy url with the same url used to acces the server
     proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
 
@@ -276,7 +278,13 @@ async def movie_watch_html(request: Request):
     streams = await redecanais.movie_streams(id, proxy_url=proxy_url)
     stream = streams[0]["url"]
 
-    return RedirectResponse(stream)
+    template = templates.get_template("player.html")
+    data = {"url": stream}
+
+    if "Android 4.2.2" in user_agent:
+        return RedirectResponse(stream)
+
+    return HTMLResponse(template.render(data))
 
 
 @app.get("/series/{id}/")
@@ -328,6 +336,8 @@ async def series_html(request: Request):
 
 @app.get("/watch/series/{id}/{season}/{episode}")
 async def series_html_watch(request: Request):
+    user_agent = request.headers.get("user-agent")
+
     # mount proxy url with the same url used to acces the server
     proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
 
@@ -339,7 +349,13 @@ async def series_html_watch(request: Request):
     streams = await redecanais.series_stream(id, season, episode, proxy_url=proxy_url)
     stream = streams[0]["url"]
 
-    return RedirectResponse(stream)
+    template = templates.get_template("player.html")
+    data = {"url": stream}
+
+    if "Android 4.2.2" in user_agent:
+        return RedirectResponse(stream)
+
+    return HTMLResponse(template.render(data))
 
 
 @app.get("/proxy/cache/")

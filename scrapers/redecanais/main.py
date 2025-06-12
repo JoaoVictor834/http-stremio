@@ -162,7 +162,7 @@ async def get_series_pages(imdb: str, season: int, episode: int):
 
 async def get_movie_pages(imdb: str) -> dict:
     try:
-        media_pages = MOVIE_LIST[imdb]
+        media_pages = MOVIES_JSON[imdb]
 
     except KeyError:
         # get information about the target media
