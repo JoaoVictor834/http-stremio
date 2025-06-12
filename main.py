@@ -6,11 +6,14 @@ import re
 import aiohttp
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse, Response
+from fastapi.responses import StreamingResponse, JSONResponse, Response, HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
+from jinja2 import Environment, FileSystemLoader
 
 from scrapers import pobreflix, redecanais, warezcdn
+
+templates = Environment(loader=FileSystemLoader("templates"))
 
 ALLOWED_PROXY_HOSTS = [
     *redecanais.HOSTS,
@@ -208,6 +211,70 @@ async def read_root(request: Request, url: str, headers: str | None = None):
             headers=response_headers,
             status_code=response.status,
         )
+
+
+@app.get("/series/{id}/")
+async def series_html(request: Request):
+    id = request.path_params.get("id")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://v3-cinemeta.strem.io/meta/series/{id}.json") as response:
+            series_data = await response.json()
+
+    # create a dict for every season
+    seasons = {}
+    for video in series_data["meta"]["videos"]:
+        if video["season"] == 0:
+            continue
+
+        episode = {
+            "number": video["number"],
+            "title": video["name"],
+            "image": video["thumbnail"],
+        }
+
+        try:
+            seasons[video["season"]]["episodes"].append(episode)
+
+        except KeyError:
+            seasons.update({video["season"]: {"number": video["season"], "episodes": []}})
+            seasons[video["season"]]["episodes"].append(episode)
+
+    # convert seasons dict to a list
+    seasons = [seasons[key] for key in seasons.keys()]
+
+    # get remaining variables
+    name = series_data["meta"]["name"]
+    background = series_data["meta"]["background"]
+    poster = series_data["meta"]["poster"]
+    logo = series_data["meta"]["logo"]
+
+    template = templates.get_template("series.html")
+    data = {
+        "seasons": seasons,
+        "name": name,
+        "logo": logo,
+        "poster": poster,
+        "background": background,
+        "id": id,
+    }
+    return HTMLResponse(template.render(data))
+
+
+@app.get("/watch/series/{id}/{season}/{episode}")
+async def series_html_watch(request: Request):
+    # mount proxy url with the same url used to acces the server
+    proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
+
+    # get variables
+    id = request.path_params.get("id")
+    season = int(request.path_params.get("season"))
+    episode = int(request.path_params.get("episode"))
+
+    streams = await redecanais.series_stream(id, season, episode, proxy_url=proxy_url)
+    print(streams)
+    stream = streams[0]["url"]
+
+    return RedirectResponse(stream)
 
 
 if __name__ == "__main__":
