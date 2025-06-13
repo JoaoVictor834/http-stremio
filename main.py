@@ -359,7 +359,7 @@ async def series_html_watch(request: Request):
 
 
 @app.get("/proxy/cache/")
-async def proxy_image(request: Request, url: str):
+async def proxy_cache(request: Request, url: str):
     # check if the url host is on the allow list
     global ALLOWED_PROXY_HOSTS
     host = urlparse(url).hostname
@@ -377,11 +377,16 @@ async def proxy_image(request: Request, url: str):
     # download the file if it's not cached already
     cache_path = os.path.join(CACHE_DIR, url_hash)
     if not os.path.exists(cache_path):
-        async with aiofiles.open(cache_path, "wb") as cache_file:
-            async with aiohttp.ClientSession() as session:
-                file_response = await session.get(url)
-                async for chunk in file_response.content.iter_chunked(1024):
-                    await cache_file.write(chunk)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as file_response:
+                # cancel if an invalid status code is received
+                if not (200 <= file_response.status <= 299):
+                    return Response(status_code=file_response.status)
+
+                # download file
+                async with aiofiles.open(cache_path, "wb") as cache_file:
+                    async for chunk in file_response.content.iter_chunked(1024):
+                        await cache_file.write(chunk)
 
     return FileResponse(cache_path)
 
