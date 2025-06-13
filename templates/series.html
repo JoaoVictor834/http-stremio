@@ -291,6 +291,9 @@
             }
         }
     </style>
+    <script>
+        const fallbackEpisodeImg = '{{background}}'
+    </script>
 </head>
 
 <body>
@@ -322,7 +325,8 @@
                     {% for episode in season.episodes %}
                     <a href="/watch/series/{{id}}/{{season.number}}/{{episode.number}}/" target="_blank">
                         <div class="episode-card" id="ep-{{season.number}}x{{episode.number}}">
-                            <img src="/proxy/cache/?url={{episode.image}}" alt="{{episode.title}}">
+                            <img class="lazyload" data-src="/proxy/cache/?url={{episode.image}}"
+                                data-fallback="/proxy/cache/?url={{background}}" alt="{{episode.title}}">
                             <div class="episode-info">
                                 <div class="episode-number">S{{season.number}} · E{{episode.number}}</div>
                                 <div class="episode-title">{{episode.title}}</div>
@@ -352,6 +356,210 @@
                 document.getElementById(`season-${seasonNumber}`).classList.add('active');
             });
         });
+    </script>
+    <script>
+        /**
+        * Lazy Loader with Fallback Image Support
+        * Implements lazy loading with fallback for older browsers
+        */
+
+        (function () {
+            // Wait for DOM to be ready
+            function domReady(fn) {
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    setTimeout(fn, 1);
+                } else {
+                    document.addEventListener('DOMContentLoaded', fn);
+                }
+            }
+
+            domReady(function () {
+                // Configuration
+                var lazyClass = 'lazyload';
+                var loadingClass = 'lazyloading';
+                var loadedClass = 'lazyloaded';
+                var errorClass = 'lazyload-error';
+                var threshold = 100; // pixels from viewport to start loading
+                var throttleDelay = 200; // ms delay between scroll/resize checks
+
+                // Get all lazy elements
+                var lazyElements = document.querySelectorAll('.' + lazyClass);
+
+                // If no elements, exit
+                if (lazyElements.length === 0) return;
+
+                // For browsers that support IntersectionObserver, use that
+                if ('IntersectionObserver' in window) {
+                    var lazyObserver = new IntersectionObserver(function (entries) {
+                        entries.forEach(function (entry) {
+                            if (entry.isIntersecting) {
+                                var lazyElement = entry.target;
+                                loadElement(lazyElement);
+                                lazyObserver.unobserve(lazyElement);
+                            }
+                        });
+                    }, {
+                        rootMargin: threshold + 'px'
+                    });
+
+                    lazyElements.forEach(function (lazyElement) {
+                        lazyObserver.observe(lazyElement);
+                    });
+
+                    return; // Exit if using IntersectionObserver
+                }
+
+                // Fallback for older browsers
+                var isProcessing = false;
+
+                // Process elements that should be loaded
+                function processElements() {
+                    if (isProcessing) return;
+                    isProcessing = true;
+
+                    var viewportTop = window.pageYOffset;
+                    var viewportBottom = viewportTop + window.innerHeight + threshold;
+
+                    for (var i = 0; i < lazyElements.length; i++) {
+                        var element = lazyElements[i];
+
+                        // Skip if already loaded, loading, or errored
+                        if (element.classList.contains(loadedClass) ||
+                            element.classList.contains(loadingClass) ||
+                            element.classList.contains(errorClass)) {
+                            continue;
+                        }
+
+                        var elementTop = getOffsetTop(element);
+                        var elementBottom = elementTop + element.offsetHeight;
+
+                        // Check if element is in or near viewport
+                        if (elementBottom >= (viewportTop - threshold) &&
+                            elementTop <= viewportBottom) {
+                            loadElement(element);
+                        }
+                    }
+
+                    isProcessing = false;
+                }
+
+                // Get element's offset from top of document
+                function getOffsetTop(element) {
+                    var offsetTop = 0;
+                    while (element) {
+                        offsetTop += element.offsetTop;
+                        element = element.offsetParent;
+                    }
+                    return offsetTop;
+                }
+
+                // Load the element (image or iframe) with fallback support
+                function loadElement(element) {
+                    element.classList.add(loadingClass);
+
+                    if (element.tagName === 'IMG') {
+                        // Handle images with fallback
+                        var src = element.getAttribute('data-src');
+                        var fallbackSrc = element.getAttribute('data-fallback');
+                        var srcset = element.getAttribute('data-srcset');
+                        var fallbackSrcset = element.getAttribute('data-fallback-srcset');
+
+                        // Try loading the primary image first
+                        var img = new Image();
+
+                        if (src) img.src = src;
+                        if (srcset) img.srcset = srcset;
+
+                        img.onload = function () {
+                            // Primary image loaded successfully
+                            if (src) element.src = src;
+                            if (srcset) element.srcset = srcset;
+                            element.classList.remove(loadingClass);
+                            element.classList.add(loadedClass);
+                        };
+
+                        img.onerror = function () {
+                            // Primary image failed - try fallback if available
+                            if (fallbackSrc) {
+                                var fallbackImg = new Image();
+                                fallbackImg.src = fallbackSrc;
+                                if (fallbackSrcset) fallbackImg.srcset = fallbackSrcset;
+
+                                fallbackImg.onload = function () {
+                                    // Fallback image loaded successfully
+                                    element.src = fallbackSrc;
+                                    if (fallbackSrcset) element.srcset = fallbackSrcset;
+                                    element.classList.remove(loadingClass);
+                                    element.classList.add(loadedClass);
+                                    element.classList.add(errorClass); // Mark as using fallback
+                                };
+
+                                fallbackImg.onerror = function () {
+                                    // Both primary and fallback failed
+                                    element.classList.remove(loadingClass);
+                                    element.classList.add(errorClass);
+                                    if (element.hasAttribute('alt')) {
+                                        // Show alt text more prominently if available
+                                        element.style.color = '#888';
+                                        element.style.background = '#f5f5f5';
+                                        element.style.display = 'inline-flex';
+                                        element.style.alignItems = 'center';
+                                        element.style.justifyContent = 'center';
+                                        element.style.minHeight = '100px';
+                                        element.style.width = element.style.width || '100%';
+                                        element.textContent = element.getAttribute('alt') || 'Image not available';
+                                    }
+                                };
+                            } else {
+                                // No fallback available
+                                element.classList.remove(loadingClass);
+                                element.classList.add(errorClass);
+                                if (element.hasAttribute('alt')) {
+                                    element.style.color = '#888';
+                                    element.style.background = '#f5f5f5';
+                                    element.style.display = 'inline-flex';
+                                    element.style.alignItems = 'center';
+                                    element.style.justifyContent = 'center';
+                                    element.style.minHeight = '100px';
+                                    element.style.width = element.style.width || '100%';
+                                    element.textContent = element.getAttribute('alt') || 'Image not available';
+                                }
+                            }
+                        };
+
+                    } else if (element.tagName === 'IFRAME') {
+                        // Handle iframes (simple version without fallback)
+                        var src = element.getAttribute('data-src');
+                        if (src) {
+                            element.src = src;
+                            element.classList.remove(loadingClass);
+                            element.classList.add(loadedClass);
+                        }
+                    }
+                }
+
+                // Throttle function to limit how often we process
+                function throttle(fn, delay) {
+                    var lastCall = 0;
+                    return function () {
+                        var now = new Date().getTime();
+                        if (now - lastCall < delay) {
+                            return;
+                        }
+                        lastCall = now;
+                        fn();
+                    };
+                }
+
+                // Initial check
+                processElements();
+
+                // Set up event listeners with throttling
+                var throttledProcess = throttle(processElements, throttleDelay);
+                window.addEventListener('scroll', throttledProcess);
+                window.addEventListener('resize', throttledProcess);
+            });
+        })();
     </script>
 </body>
 
