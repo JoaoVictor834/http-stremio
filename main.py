@@ -38,8 +38,8 @@ app.add_middleware(
 MANIFEST = {
     "id": "org.stremio.huuuuuugo.httpstreams",
     "version": "0.0.2",
-    "name": "HTTP Stream",
-    "description": "Stream videos over http",
+    "name": "Rede Canais",
+    "description": "Acessa rede canais,
     "types": ["movie", "series"],
     "catalogs": [],
     "resources": ["stream"],
