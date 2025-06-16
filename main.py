@@ -340,13 +340,14 @@ async def series_html_watch(request: Request):
 
     # mount proxy url with the same url used to acces the server
     proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
+    cache_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/cache/"
 
     # get variables
     id = request.path_params.get("id")
     season = int(request.path_params.get("season"))
     episode = int(request.path_params.get("episode"))
 
-    streams = await redecanais.series_stream(id, season, episode, proxy_url=proxy_url)
+    streams = await redecanais.series_stream(id, season, episode, proxy_url=proxy_url, cache_url=cache_url)
     stream = streams[0]["url"]
 
     template = templates.get_template("player.html")
