@@ -75,28 +75,7 @@ async def find_episode_pages(series_page_url: str, season: int, episode: int) ->
         async with session.get(series_page_url) as response:
             html = BeautifulSoup(await decode_from_response(response), "html.parser")
 
-    episode_pages = {}
-
-    # === Primeira tentativa: BeautifulSoup estruturado ===
-    for p in html.find_all("p"):
-        text = p.get_text()
-        if f"{season}ª Temporada" in text or f"Temporada {season}" in text:
-            for strong in p.find_all("strong"):
-                if f"Episódio {episode}" in strong.get_text() or f"Ep {episode}" in strong.get_text():
-                    for a in strong.find_all_next("a", limit=2):
-                        label = a.get_text(strip=True).lower()
-                        href = a.get("href")
-                        if not href:
-                            continue
-                        full_url = urljoin(REDECANAIS_URL, href)
-                        if "dublado" in label or "assistir" in label:
-                            episode_pages["dub"] = full_url
-                        elif "legendado" in label:
-                            episode_pages["leg"] = full_url
-                    if episode_pages:
-                        return episode_pages  # se encontrou, já retorna
-
-    # === Fallback: método antigo com regex ===
+    # Extrai o HTML mais longo de <p> (como antes)
     p_list = html.find_all("p")
     episodes_html = ""
     for p in p_list:
@@ -109,40 +88,42 @@ async def find_episode_pages(series_page_url: str, season: int, episode: int) ->
     episode_audios = []
 
     for line in episodes_html.splitlines():
-        if not season_found:
-            if "Temporada" in line and str(season) in line:
-                season_found = True
-                continue
+        line = line.strip()
 
-        elif not episode_found:
-            if "Ep" in line and str(episode) in line:
-                episode_found = True
-                continue
+        # Verifica temporada
+        if not season_found and "Temporada" in line and str(season) in line:
+            season_found = True
+            continue
 
-        else:
-            url = re.findall(r'href *= *"(.+?)"', line)
-            if url:
-                url = urljoin(REDECANAIS_URL, url[0])
+        # Verifica episódio
+        elif season_found and not episode_found and "Ep" in line and str(episode) in line:
+            episode_found = True
+            continue
+
+        # Coleta URLs e rótulos
+        elif episode_found:
+            url_match = re.findall(r'href *= *"(.+?)"', line)
+            if url_match:
+                url = urljoin(REDECANAIS_URL, url_match[0])
                 episode_urls.append(url)
 
             elif "Legendado" in line:
                 episode_audios.append("leg")
-            elif "Assistir" in line or "Dublado" in line:
+            elif "Dublado" in line or "Assistir" in line:
                 episode_audios.append("dub")
 
+            # Fim do bloco do episódio
             elif "Ep" in line and str(episode + 1) in line:
                 break
             elif "Temporada" in line and str(season + 1) in line:
                 break
 
-            if len(episode_urls) >= 2:
-                break
-
-    for i, key in enumerate(episode_audios):
-        episode_pages[key] = episode_urls[i]
+    # Combina os URLs com os tipos de áudio por ordem
+    episode_pages = {}
+    for i in range(min(len(episode_urls), len(episode_audios))):
+        episode_pages[episode_audios[i]] = episode_urls[i]
 
     return episode_pages
-
 
 # TODO: update it to work with pages that don't reset the episode number on each season
 async def get_series_pages(imdb: str, season: int, episode: int):
