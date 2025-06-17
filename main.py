@@ -57,7 +57,10 @@ async def addon_manifest():
 @app.get("/stream/movie/{id}.json")
 async def movie_stream(request: Request):
     # mount proxy url with the same url used to acces the server
-    proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
+    if port is None:
+        proxy_url = f"{request.url.scheme}://{request.url.hostname}/proxy/"
+    else:
+        proxy_url = f"{request.url.scheme}://{request.url.hostname}:{port}/proxy/"
 
     # get variables
     id = request.path_params.get("id")
@@ -80,7 +83,11 @@ async def movie_stream(request: Request):
 @app.get("/stream/series/{id}:{season}:{episode}.json")
 async def series_stream(request: Request):
     # mount proxy url with the same url used to acces the server
-    proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
+    if port is None:
+        proxy_url = f"{request.url.scheme}://{request.url.hostname}/proxy/"
+    else:
+        proxy_url = f"{request.url.scheme}://{request.url.hostname}:{port}/proxy/"
+
 
     # get variables
     id = request.path_params.get("id")
