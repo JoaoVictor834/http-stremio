@@ -30,7 +30,8 @@ class PlayerStream:
 
         async with aiohttp.ClientSession() as session:
             async with session.get(video_page_url) as video_page_response:
-                decoded_html = decode_from_text(await video_page_response.text(), 1)
+                text = await video_page_response.text()
+                decoded_html = decode_from_text(text, 1)
                 if not (200 <= video_page_response.status <= 299):
                     msg = f"Unexpected status code when requesting video page '{video_page_response.status}'"
                     raise UnexpectedStatusCode(msg)
@@ -76,7 +77,6 @@ class PlayerStream:
                 if "VkFfQlVTQ0FSX0VNX09VVFJPX0xVR0FSX0hF" in script.text:
                     # ignore portion after the url strings
                     text = script.text.split(";")[0]
-                    print(text)
 
                     # ignore + and " chars
                     videojs_url = "".join(re.findall(r"\"([^\+\"]+?)\"", text))
@@ -94,14 +94,19 @@ class PlayerStream:
         if cache_url:
             videojs_url = cache_url + f"?url={quote_plus(videojs_url)}"
 
+        videojs_headers = {
+            "x-requested-with": "RC-Site-Requests",
+            "h31ffadrg3bb7": "h31ffadrg3fj345a",
+        }
         async with aiohttp.ClientSession() as session:
-            async with session.get(videojs_url) as videojs_response:
+            async with session.get(videojs_url, headers=videojs_headers) as videojs_response:
                 text = await videojs_response.text()
                 decoded_text = decode_videojs(text)
 
             urls = re.findall(r"(?:\"(?:https?:)?(//.+?)\")", decoded_text)
             urls = ["https:" + url for url in urls]
 
+            expected_params = ["sv", "cc", "nu3zAQc9HC3GbwJq"]
             for url in urls:
                 try:
                     query_params = url.split("?")[1]
@@ -109,29 +114,30 @@ class PlayerStream:
                 except IndexError:
                     continue
 
-                if list(query_params) == ["sv", "nu3zAQc9HC3GbwJq"]:
+                query_params = list(query_params)
+                if query_params == expected_params:
                     print(url)
                     return url
 
     @classmethod
     async def get(cls, video_page_url: str, cache_url: None | str = None):
         print("get")
+        print(video_page_url)
         video_player_url = await cls.get_video_player_url(video_page_url, cache_url)
         videojs_url = await cls.get_videosjs_url(video_player_url, cache_url)
-        stream = await cls.get_stream_url(videojs_url, cache_url)
+        stream = await cls.get_stream_url(videojs_url)
 
         # add stream host to list of allowed hosts
         hostname = urlparse(stream).hostname
         if hostname not in HOSTS:
             HOSTS.append(hostname)
 
-        headers = {"Referer": REDECANAIS_URL}
+        headers = {
+            "referer": REDECANAIS_URL,
+        }
+        print(headers)
 
         return StremioStream(stream, headers=headers)
-
-
-# async def download_stream(video_page_url: str) -> StremioStream:
-#     return await DownloadStream.get(video_page_url)
 
 
 async def player_stream(video_page_url: str, cache_url: None | str = None) -> StremioStream:
