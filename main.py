@@ -39,7 +39,7 @@ MANIFEST = {
     "id": "org.stremio.huuuuuugo.httpstreams",
     "version": "0.0.2",
     "name": "Rede Canais",
-    "description": "Acessa rede canais,
+    "description": "Acessa sites brasileiros",
     "types": ["movie", "series"],
     "catalogs": [],
     "resources": ["stream"],
