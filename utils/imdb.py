@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 import asyncio
 import typing
 import re
@@ -17,7 +18,7 @@ class IMDB:
         return f"<title: {self.title} | year: {self.year}>"
 
     @classmethod
-    async def get(cls, code: str, lang: typing.Literal["en", "fr", "de", "es", "pt", "ja", "zh"] = "en"):
+    async def get(cls, code: str, lang: typing.Literal["en", "fr", "de", "es", "pt", "ja", "zh"] = "en", cache_url: None | str = None):
         # list of languages accepted by imdb
         accept_languages = {
             "en": "en-US,en;q=0.9",  # US English
@@ -43,9 +44,15 @@ class IMDB:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
                 "Accept-Language": lang,
             }
+
+            if cache_url:
+                query = urlencode({"url": imdb_url, "headers": headers})
+                imdb_url = f"{cache_url}?{query}"
+                headers = {}
+
             async with session.get(imdb_url, headers=headers) as response:
                 if response.status != 200:
-                    msg = f"Bad status code when requesting IMDb page. Expected '200', got '{response.status_code}'"
+                    msg = f"Bad status code when requesting IMDb page. Expected '200', got '{response.status}'"
                     raise Exception(msg)
 
                 imdb_html = BeautifulSoup(await response.text(), "html.parser")

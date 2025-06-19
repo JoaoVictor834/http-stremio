@@ -7,14 +7,14 @@ from .main import get_movie_pages, get_series_pages
 from .sources import player_stream, HOSTS
 
 
-async def movie_streams(imdb: str, proxy_url: str | None = None):
+async def movie_streams(imdb: str, proxy_url: str | None = None, cache_url: None | str = None):
     try:
-        pages = await get_movie_pages(imdb)
+        pages = await get_movie_pages(imdb, cache_url)
 
         streams = StremioStreamManager()
         if "dub" in pages.keys():
             # get video stream
-            stream = await player_stream(pages["dub"])
+            stream = await player_stream(pages["dub"], cache_url)
 
             if proxy_url is None:
                 # create formated stream json
@@ -28,7 +28,7 @@ async def movie_streams(imdb: str, proxy_url: str | None = None):
 
         if "leg" in pages.keys():
             # get video stream
-            stream = await player_stream(pages["leg"])
+            stream = await player_stream(pages["leg"], cache_url)
 
             if proxy_url is None:
                 # create formated stream json
@@ -48,14 +48,14 @@ async def movie_streams(imdb: str, proxy_url: str | None = None):
         return []
 
 
-async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | None = None):
+async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | None = None, cache_url: None | str = None):
     try:
-        pages = await get_series_pages(imdb, season, episode)
+        pages = await get_series_pages(imdb, season, episode, cache_url)
 
         streams = StremioStreamManager()
         if "dub" in pages.keys():
             # get video stream
-            stream = await player_stream(pages["dub"])
+            stream = await player_stream(pages["dub"], cache_url)
 
             if proxy_url is None:
                 # create formated stream json
@@ -69,7 +69,7 @@ async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | N
 
         if "leg" in pages.keys():
             # get video stream
-            stream = await player_stream(pages["leg"])
+            stream = await player_stream(pages["leg"], cache_url)
 
             if proxy_url is None:
                 # create formated stream json
