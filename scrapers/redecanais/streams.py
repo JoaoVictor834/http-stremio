@@ -9,7 +9,7 @@ from .sources import player_stream, HOSTS
 
 async def movie_streams(imdb: str, proxy_url: str | None = None, cache_url: None | str = None):
     try:
-        pages = await get_movie_pages(imdb)
+        pages = await get_movie_pages(imdb, cache_url)
 
         streams = StremioStreamManager()
         if "dub" in pages.keys():

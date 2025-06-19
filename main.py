@@ -26,6 +26,7 @@ ALLOWED_PROXY_HOSTS = {}
 def update_allowed_hosts():
     global ALLOWED_PROXY_HOSTS
     ALLOWED_PROXY_HOSTS = [
+        "www.imdb.com",
         "live.metahub.space",
         "images.metahub.space",
         "episodes.metahub.space",
@@ -67,6 +68,7 @@ MANIFEST = {
 }
 
 
+# stremio routes
 # manifest route
 @app.get("/manifest.json")
 async def addon_manifest():
@@ -78,6 +80,7 @@ async def addon_manifest():
 async def movie_stream(request: Request):
     # mount proxy url with the same url used to acces the server
     proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
+    cache_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/cache/"
 
     # get variables
     id = request.path_params.get("id")
@@ -85,8 +88,8 @@ async def movie_stream(request: Request):
     # run scrapers
     tasks = [
         pobreflix.movie_streams(id),
-        redecanais.movie_streams(id, proxy_url),
-        warezcdn.movie_streams(id, proxy_url),
+        redecanais.movie_streams(id, proxy_url=proxy_url, cache_url=cache_url),
+        warezcdn.movie_streams(id, proxy_url=proxy_url),
     ]
     results = await asyncio.gather(*tasks)
     streams = []
@@ -101,6 +104,7 @@ async def movie_stream(request: Request):
 async def series_stream(request: Request):
     # mount proxy url with the same url used to acces the server
     proxy_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/"
+    cache_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}/proxy/cache/"
 
     # get variables
     id = request.path_params.get("id")
@@ -110,8 +114,8 @@ async def series_stream(request: Request):
     # run scrapers
     tasks = [
         pobreflix.series_stream(id, season, episode),
-        redecanais.series_stream(id, season, episode, proxy_url),
-        warezcdn.series_stream(id, season, episode, proxy_url),
+        redecanais.series_stream(id, season, episode, proxy_url=proxy_url, cache_url=cache_url),
+        warezcdn.series_stream(id, season, episode, proxy_url=proxy_url),
     ]
     results = await asyncio.gather(*tasks)
     streams = []
@@ -171,6 +175,7 @@ def add_proxy_to_hls_parts(m3u8_content: str, headers: dict | None = None):
     return "\n".join(lines)
 
 
+# proxy routes
 @app.get("/proxy/")
 async def read_root(request: Request, url: str, headers: str | None = None):
     # check if the url host is on the allow list
@@ -227,6 +232,46 @@ async def read_root(request: Request, url: str, headers: str | None = None):
         )
 
 
+@app.get("/proxy/cache/")
+async def proxy_cache(request: Request, url: str, headers: None | str = None):
+    # check if the url host is on the allow list
+    global ALLOWED_PROXY_HOSTS
+    host = urlparse(url).hostname
+    if host not in ALLOWED_PROXY_HOSTS:
+        # reload hosts and try again
+        update_allowed_hosts()
+        if host not in ALLOWED_PROXY_HOSTS:
+            raise HTTPException(403, "Host not allowed")
+
+    # create headers dict that will be used on the request to the host
+    if headers is not None:
+        headers = ast.literal_eval(headers)
+    else:
+        headers = {}
+
+    # get hash of url plus headers
+    url_hash = hashlib.md5()
+    url_hash.update(f"{url} {headers}".encode())
+    url_hash = url_hash.hexdigest()
+
+    # download the file if it's not cached already
+    cache_path = os.path.join(CACHE_DIR, url_hash)
+    if not os.path.exists(cache_path):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as file_response:
+                # cancel if an invalid status code is received
+                if not (200 <= file_response.status <= 299):
+                    return Response(status_code=file_response.status)
+
+                # download file
+                async with aiofiles.open(cache_path, "wb") as cache_file:
+                    async for chunk in file_response.content.iter_chunked(1024):
+                        await cache_file.write(chunk)
+
+    return FileResponse(cache_path)
+
+
+# html routes
 @app.get("/")
 async def index_html(request: Request):
     async with aiofiles.open("selected-media.json", "r", encoding="utf8") as f:
@@ -278,12 +323,11 @@ async def movie_watch_html(request: Request):
     streams = await redecanais.movie_streams(id, proxy_url=proxy_url)
     stream = streams[0]["url"]
 
-    template = templates.get_template("player.html")
-    data = {"url": stream}
-
     if "Android 4.2.2" in user_agent:
         return RedirectResponse(stream)
 
+    template = templates.get_template("player.html")
+    data = {"url": stream}
     return HTMLResponse(template.render(data))
 
 
@@ -350,46 +394,12 @@ async def series_html_watch(request: Request):
     streams = await redecanais.series_stream(id, season, episode, proxy_url=proxy_url, cache_url=cache_url)
     stream = streams[0]["url"]
 
-    template = templates.get_template("player.html")
-    data = {"url": stream}
-
     if "Android 4.2.2" in user_agent:
         return RedirectResponse(stream)
 
+    template = templates.get_template("player.html")
+    data = {"url": stream}
     return HTMLResponse(template.render(data))
-
-
-@app.get("/proxy/cache/")
-async def proxy_cache(request: Request, url: str):
-    # check if the url host is on the allow list
-    global ALLOWED_PROXY_HOSTS
-    host = urlparse(url).hostname
-    if host not in ALLOWED_PROXY_HOSTS:
-        # reload hosts and try again
-        update_allowed_hosts()
-        if host not in ALLOWED_PROXY_HOSTS:
-            raise HTTPException(403, "Host not allowed")
-
-    # get url hash
-    url_hash = hashlib.md5()
-    url_hash.update(url.encode())
-    url_hash = url_hash.hexdigest()
-
-    # download the file if it's not cached already
-    cache_path = os.path.join(CACHE_DIR, url_hash)
-    if not os.path.exists(cache_path):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as file_response:
-                # cancel if an invalid status code is received
-                if not (200 <= file_response.status <= 299):
-                    return Response(status_code=file_response.status)
-
-                # download file
-                async with aiofiles.open(cache_path, "wb") as cache_file:
-                    async for chunk in file_response.content.iter_chunked(1024):
-                        await cache_file.write(chunk)
-
-    return FileResponse(cache_path)
 
 
 if __name__ == "__main__":

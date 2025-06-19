@@ -11,9 +11,9 @@ HOSTS = [
 ]
 
 
-async def movie_streams(imdb: str, proxy_url: str | None = None):
+async def movie_streams(imdb: str, proxy_url: str | None = None, cache_url: None | str = None):
     try:
-        pages = await get_media_pages(imdb)
+        pages = await get_media_pages(imdb, cache_url)
 
         streams = StremioStreamManager()
         if "dub" in pages.keys():
@@ -60,9 +60,9 @@ async def movie_streams(imdb: str, proxy_url: str | None = None):
         return []
 
 
-async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | None = None):
+async def series_stream(imdb: str, season: int, episode: int, proxy_url: str | None = None, cache_url: None | str = None):
     try:
-        pages = await get_media_pages(imdb)
+        pages = await get_media_pages(imdb, cache_url)
 
         streams = StremioStreamManager()
         if "dub" in pages.keys():

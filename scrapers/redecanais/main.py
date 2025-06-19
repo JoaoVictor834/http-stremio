@@ -1,6 +1,6 @@
 # general functions and classes needed to scrape the site
 
-from urllib.parse import urljoin, quote_plus
+from urllib.parse import urljoin, quote_plus, urlencode
 import json
 import re
 import os
@@ -72,7 +72,8 @@ async def parse_movie_list():
 
 async def find_episode_pages(series_page_url: str, season: int, episode: int, cache_url: None | str = None) -> dict:
     if cache_url:
-        series_page_url = cache_url + f"?url={quote_plus(series_page_url)}"
+        query = urlencode({"url": series_page_url})
+        series_page_url = f"{cache_url}?{query}"
 
     async with aiohttp.ClientSession() as session:
         async with session.get(series_page_url) as response:
@@ -151,7 +152,7 @@ async def get_series_pages(imdb: str, season: int, episode: int, cache_url: None
 
         except KeyError:
             print("get_series_pages")
-            info = await IMDB.get(imdb, "pt")
+            info = await IMDB.get(imdb, "pt", cache_url)
             title = to_kebab_case(info.title)
 
             # format video page url using the redecanais pattern
@@ -163,13 +164,13 @@ async def get_series_pages(imdb: str, season: int, episode: int, cache_url: None
     return episode_pages
 
 
-async def get_movie_pages(imdb: str) -> dict:
+async def get_movie_pages(imdb: str, cache_url: None | str) -> dict:
     try:
         media_pages = MOVIES_JSON[imdb]
 
     except KeyError:
         # get information about the target media
-        info = await IMDB.get(imdb, "pt")
+        info = await IMDB.get(imdb, "pt", cache_url)
         title = to_kebab_case(info.title)
         year = str(info.year)
         first_char = title[0] if title[0].isalpha() else "-"

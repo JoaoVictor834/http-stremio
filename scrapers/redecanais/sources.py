@@ -25,8 +25,8 @@ class PlayerStream:
         print("get_video_player_url")
         # get video page
         if cache_url:
-            video_page_url = cache_url + f"?url={quote_plus(video_page_url)}"
-            print(video_page_url)
+            query = urlencode({"url": video_page_url})
+            video_page_url = f"{cache_url}?{query}"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(video_page_url) as video_page_response:
@@ -58,7 +58,8 @@ class PlayerStream:
     async def get_videosjs_url(cls, video_player_url: str, cache_url: None | str = None) -> str:
         print("get_videojs_url")
         if cache_url:
-            video_player_url = cache_url + f"?url={quote_plus(video_player_url)}"
+            query = urlencode({"url": video_player_url})
+            video_player_url = f"{cache_url}?{query}"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(video_player_url) as video_player_response:
@@ -91,13 +92,15 @@ class PlayerStream:
     @classmethod
     async def get_stream_url(cls, videojs_url: str, cache_url: None | str = None):
         print("get_stream_url")
-        if cache_url:
-            videojs_url = cache_url + f"?url={quote_plus(videojs_url)}"
-
         videojs_headers = {
             "x-requested-with": "RC-Site-Requests",
             "h31ffadrg3bb7": "h31ffadrg3fj345a",
         }
+
+        if cache_url:
+            query = urlencode({"url": videojs_url, "headers": videojs_headers})
+            videojs_url = f"{cache_url}?{query}"
+
         async with aiohttp.ClientSession() as session:
             async with session.get(videojs_url, headers=videojs_headers) as videojs_response:
                 text = await videojs_response.text()
@@ -125,7 +128,7 @@ class PlayerStream:
         print(video_page_url)
         video_player_url = await cls.get_video_player_url(video_page_url, cache_url)
         videojs_url = await cls.get_videosjs_url(video_player_url, cache_url)
-        stream = await cls.get_stream_url(videojs_url)
+        stream = await cls.get_stream_url(videojs_url, cache_url)
 
         # add stream host to list of allowed hosts
         hostname = urlparse(stream).hostname

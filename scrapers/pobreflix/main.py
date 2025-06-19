@@ -59,9 +59,9 @@ async def search(search_term: str) -> list[PobreflixResult]:
     return result_list
 
 
-async def get_media_pages(imdb: str) -> dict:
+async def get_media_pages(imdb: str, cache_url: None | str = None) -> dict:
     # get media info on imdb
-    info = await IMDB.get(imdb, "pt")
+    info = await IMDB.get(imdb, "pt", cache_url)
 
     # search for media with matching title and release year
     search_results = await search(info.title)
