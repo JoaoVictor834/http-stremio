@@ -6,26 +6,22 @@ import aiohttp
 from fastapi import Request
 from fastapi.exceptions import HTTPException
 
-from scrapers import redecanais, warezcdn
 from . import constants
 
 
-def update_allowed_hosts():
-    constants.ALLOWED_HOSTS = [
-        *constants.STATIC_ALLOWED_HOSTS,
-        *constants.M3U8_PARTS_HOSTS,
-        *redecanais.HOSTS,
-        *warezcdn.HOSTS,
-    ]
+def check_allowed_urls(url: str):
+    # try url against the list of allowed hosts
+    hostname = urlparse(url).hostname
+    if hostname in constants.ALLOWED_HOSTS:
+        return
 
+    # try url against the list of allowed regular expressions
+    for pattern in constants.ALLOWED_REGEXS:
+        if re.match(pattern, url):
+            return
 
-def check_host_allowed(url: str):
-    host = urlparse(url).hostname
-    if host not in constants.ALLOWED_HOSTS:
-        # reload hosts and try again
-        update_allowed_hosts()
-        if host not in constants.ALLOWED_HOSTS:
-            raise HTTPException(403, "Host not allowed")
+    # block request if everything else fails
+    raise HTTPException(403, f"URL blocked by proxy: The URL '{url}' does not match any of the allowed hosts or regular expressions.")
 
 
 async def yield_chunks(request: Request, session: aiohttp.ClientSession, response: aiohttp.ClientResponse, chunk_size: int = 8192):
@@ -69,11 +65,5 @@ def add_proxy_to_hls_parts(m3u8_content: str, headers: dict | None = None):
             url = url_matches[0]
             query = urlencode({"url": url, "headers": headers})
             lines[i] = f"?{query}"
-
-            # add host of the part url to the list of allowed hosts
-            host = urlparse(url).hostname
-            if host not in constants.M3U8_PARTS_HOSTS:
-                constants.M3U8_PARTS_HOSTS.append(host)
-                update_allowed_hosts()
 
     return "\n".join(lines)

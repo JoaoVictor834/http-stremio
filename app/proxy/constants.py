@@ -1,19 +1,22 @@
 import os
 
-# static list of hosts
-STATIC_ALLOWED_HOSTS = [
+from scrapers import pobreflix, redecanais, warezcdn
+
+# conjunction of raw hosts strings defined here and on each scraper
+ALLOWED_HOSTS = [
     "www.imdb.com",
     "live.metahub.space",
     "images.metahub.space",
     "episodes.metahub.space",
+    *redecanais.ALLOWED_HOSTS,
+    *warezcdn.ALLOWED_HOSTS,
 ]
 
-# dinamically updated inside utils.py by `add_proxy_to_hls_parts`
-M3U8_PARTS_HOSTS = []
-
-# conjunction of STATIC_ALLOWED_HOSTS, M3U8_PARTS_HOSTS, and other hosts related to different scrapers
-# dinamically updated inside utils.py by `update_allowed_hosts`
-ALLOWED_HOSTS = []
+# list of regular expressions that match urls used by scrapers
+ALLOWED_REGEXS = [
+    *redecanais.ALLOWED_REGEXS,
+    *warezcdn.ALLOWED_REGEXS,
+]
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 

@@ -9,13 +9,13 @@ from fastapi import Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import StreamingResponse, FileResponse, Response
 
-from .utils import check_host_allowed, add_proxy_to_hls_parts, yield_chunks
+from .utils import check_allowed_urls, add_proxy_to_hls_parts, yield_chunks
 from . import constants
 
 
 async def stream_proxy(request: Request, url: str, headers: dict, request_headers: dict):
     # check if the url host is on the allow list
-    check_host_allowed(url)
+    check_allowed_urls(url)
 
     # get headers relevant to the host
     if "range" in request_headers.keys():
@@ -55,7 +55,7 @@ async def stream_proxy(request: Request, url: str, headers: dict, request_header
 
 async def cache_proxy(url: str, headers: dict):
     # check if the url host is on the allow list
-    check_host_allowed(url)
+    check_allowed_urls(url)
 
     # get hash of url plus headers
     url_hash = hashlib.md5()

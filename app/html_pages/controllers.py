@@ -12,7 +12,21 @@ async def index_route(request: Request):
 
 @router.get("/movie/{id}")
 async def movie_info_route(request: Request, id: str):
-    return await movie_info(id)
+    # mount proxy and cache url with the same url used to acces the server
+    scheme = request.url.scheme
+    hostname = request.url.hostname
+    port = request.url.port
+    proxy_url = f"{scheme}://{hostname}{f":{port}" if port else ""}/proxy/stream/"
+    cache_url = f"{scheme}://{hostname}{f":{port}" if port else ""}/proxy/cache/"
+
+    # other parameters
+    user_agent = request.headers.get("user-agent")
+
+    return await watch_movie(id, proxy_url, cache_url, user_agent)
+
+
+# async def movie_info_route(request: Request, id: str):
+#     return await movie_info(id)
 
 
 @router.get("/series/{id}")
