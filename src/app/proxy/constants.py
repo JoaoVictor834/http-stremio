@@ -1,6 +1,6 @@
 import os
 
-from scrapers import pobreflix, redecanais, warezcdn
+from src.scrapers import pobreflix, redecanais, warezcdn
 
 # conjunction of raw hosts strings defined here and on each scraper
 ALLOWED_HOSTS = [

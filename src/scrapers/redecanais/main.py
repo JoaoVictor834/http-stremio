@@ -8,7 +8,7 @@ import os
 from bs4 import BeautifulSoup
 import aiohttp
 
-from utils.imdb import IMDB
+from src.utils.imdb import IMDB
 from .sources import REDECANAIS_URL
 from .utils import to_kebab_case
 from .decoders import decode_from_response

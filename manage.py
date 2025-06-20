@@ -5,7 +5,7 @@ import time
 
 import uvicorn
 
-from app.main import app
+from src.app.main import app
 
 
 def run_uvicorn(port: int, ssl: bool = False):

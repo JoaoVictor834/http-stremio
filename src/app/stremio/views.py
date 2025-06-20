@@ -2,7 +2,7 @@ import asyncio
 
 from fastapi.responses import JSONResponse
 
-from scrapers import pobreflix, redecanais, warezcdn
+from src.scrapers import pobreflix, redecanais, warezcdn
 from . import constants
 
 

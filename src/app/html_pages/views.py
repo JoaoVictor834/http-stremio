@@ -7,7 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from scrapers import redecanais
+from src.scrapers import redecanais
 from . import constants
 
 templates = Environment(loader=FileSystemLoader(constants.TEMPLATES_DIR))

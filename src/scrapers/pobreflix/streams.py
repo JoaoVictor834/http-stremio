@@ -2,7 +2,7 @@
 
 from urllib.parse import urlencode
 
-from utils.stremio import StremioStream, StremioStreamManager
+from src.utils.stremio import StremioStream, StremioStreamManager
 from .main import get_media_pages, get_sources, get_epiosode_url
 from .sources import streamtape_stream
 

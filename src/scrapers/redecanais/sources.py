@@ -6,7 +6,7 @@ import re
 from bs4 import BeautifulSoup
 import aiohttp
 
-from utils.stremio import StremioStream
+from src.utils.stremio import StremioStream
 from .decoders import decode_from_text, decode_videojs
 from .exceptions import *
 
