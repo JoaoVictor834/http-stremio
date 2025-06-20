@@ -270,6 +270,16 @@
             }
         };
 
+        video.onclick = function () {
+            if (video.paused) {
+                video.play();
+                playPauseBtn.innerHTML = '&#9208;'; /* Pause symbol */
+            } else {
+                video.pause();
+                playPauseBtn.innerHTML = '&#9654;'; /* Play symbol */
+            }
+        };
+
         volumeSlider.oninput = function () {
             video.volume = volumeSlider.value;
             volumeBtn.innerHTML = (video.volume === 0) ? '&#128263;' : '&#128266;'; /* Mute/Volume icon */
