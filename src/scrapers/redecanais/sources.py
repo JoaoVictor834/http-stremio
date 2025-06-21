@@ -1,21 +1,16 @@
 # functions to extract stream links from site sources
 
-from urllib.parse import urlencode, parse_qs, urlparse, urljoin, quote_plus
+from urllib.parse import urlencode, parse_qs, urljoin
 import re
 
 from bs4 import BeautifulSoup
 import aiohttp
 
-from utils.stremio import StremioStream
-from .utils import convert_to_punycode
+from src.utils.stremio import StremioStream
 from .decoders import decode_from_text, decode_videojs
 from .exceptions import *
 
 REDECANAIS_URL = "https://redecanais.gs/"
-
-HOSTS = [
-    urlparse(REDECANAIS_URL).hostname,
-]
 
 
 class PlayerStream:
@@ -130,15 +125,9 @@ class PlayerStream:
         videojs_url = await cls.get_videosjs_url(video_player_url, cache_url)
         stream = await cls.get_stream_url(videojs_url, cache_url)
 
-        # add stream host to list of allowed hosts
-        hostname = urlparse(stream).hostname
-        if hostname not in HOSTS:
-            HOSTS.append(hostname)
-
         headers = {
             "referer": REDECANAIS_URL,
         }
-        print(headers)
 
         return StremioStream(stream, headers=headers)
 

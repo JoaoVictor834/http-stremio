@@ -1,12 +1,16 @@
 from urllib.parse import urlencode
 import asyncio
 
-from utils.stremio import StremioStream, StremioStreamManager
+from src.utils.stremio import StremioStream, StremioStreamManager
 from .main import get_movie_audios, get_series_audios
 from .sources import warezcdn_stream
 
-HOSTS = [
+ALLOWED_HOSTS = [
     "basseqwevewcewcewecwcw.xyz",
+]
+
+ALLOWED_REGEXS = [
+    r"^https?://[a-z]+\.xyz/cdn/down/[a-z0-9]+/Video/[0-9]{3,4}p/.+$",
 ]
 
 

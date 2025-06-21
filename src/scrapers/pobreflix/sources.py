@@ -5,7 +5,7 @@ import re
 import aiohttp
 from bs4 import BeautifulSoup
 
-from utils.stremio import StremioStream
+from src.utils.stremio import StremioStream
 from .exceptions import *
 
 

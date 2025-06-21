@@ -5,7 +5,7 @@ import re
 
 import aiohttp
 
-from utils.stremio import StremioStream
+from src.utils.stremio import StremioStream
 from .main import EMBED_URL, USER_AGENT, AudioData
 
 

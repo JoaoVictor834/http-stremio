@@ -5,7 +5,7 @@ from urllib.parse import urljoin, urlencode
 from bs4 import BeautifulSoup
 import aiohttp
 
-from utils.imdb import IMDB
+from src.utils.imdb import IMDB
 from .exceptions import *
 
 

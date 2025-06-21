@@ -2,9 +2,17 @@
 
 from urllib.parse import urlencode
 
-from utils.stremio import StremioStream, StremioStreamManager
+from src.utils.stremio import StremioStream, StremioStreamManager
 from .main import get_movie_pages, get_series_pages
-from .sources import player_stream, HOSTS
+from .sources import player_stream
+
+ALLOWED_HOSTS = [
+    "redecanais.gs",
+]
+
+ALLOWED_REGEXS = [
+    r"^https?://outbound-proxy-us-east1-0-glob-usercontent-client-id-\d{10}\.googleapis\.com\.pt.*$",
+]
 
 
 async def movie_streams(imdb: str, proxy_url: str | None = None, cache_url: None | str = None):

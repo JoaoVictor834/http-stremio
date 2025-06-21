@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player</title>
+    <style>
+        :root {
+            --primary: #ff2e63;
+            --secondary: #08d9d6;
+            --bg-dark: #0f0f13;
+            --text: #eaeaea;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: sans-serif;
+        }
+
+        body {
+            background-color: #000;
+            color: #eaeaea;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            /* Centers .video-container horizontally */
+            align-items: center;
+            /* Centers .video-container vertically */
+            /* We can revert align-items back to center on body, as video-container will now explicitly fill the space */
+            cursor: default;
+            transition: cursor 0.5s ease;
+        }
+
+        .video-container {
+            position: relative;
+            background-color: #000;
+            /* NEW: Force container to always fill the entire viewport dimensions */
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            /* These become a bit redundant but don't hurt */
+            max-height: 100vh;
+            display: flex;
+            /* Still good for internal centering of controls and potential overlays */
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-player {
+            display: block;
+            /* NEW: Always take 100% of parent container's dimensions */
+            width: 100%;
+            height: 100%;
+            /* CRITICAL NEW: This handles all scaling, aspect ratio, and centering for ALL videos */
+            object-fit: contain;
+            outline: none;
+            /* REMOVE margin: auto; as object-fit handles centering */
+            margin: 0;
+        }
+
+        /* Remove this block as object-fit: contain will always be active now */
+        /* .video-container.fullscreen .video-player {
+    width: 100%; 
+    height: 100%; 
+    object-fit: contain; 
+} */
+
+        body.hide-cursor {
+            cursor: none;
+        }
+
+
+
+        /* Custom controls styling */
+        .custom-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 1rem;
+            display: block;
+            z-index: 10;
+            opacity: 0;
+            /* Start hidden */
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+            /* Allow clicks to pass through when hidden */
+        }
+
+        .custom-controls.active {
+            opacity: 1;
+            pointer-events: auto;
+            /* Enable pointer events when active */
+        }
+
+        .custom-controls:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        .custom-controls>* {
+            float: left;
+            margin-right: 1rem;
+        }
+
+        .custom-controls .fullscreen-btn {
+            float: right;
+            margin-right: 0;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: #eaeaea;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .play-pause {
+            color: #ff2e63;
+        }
+
+        .volume-control {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .volume-control input[type="range"] {
+            width: 80px;
+        }
+
+        .progress-container {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            width: calc(100% - 220px);
+            float: left;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #ff2e63;
+            border-radius: 3px;
+            width: 0%;
+            position: relative;
+        }
+
+        .time-display {
+            font-size: 0.9rem;
+            white-space: nowrap;
+            float: left;
+            margin-left: 1rem;
+            margin-top: 5px;
+        }
+
+        /* Hide native controls */
+        video::-webkit-media-controls {
+            display: none !important;
+        }
+
+        video::-moz-media-controls {
+            display: none !important;
+        }
+
+        video::-ms-media-controls {
+            display: none !important;
+        }
+
+        video::-o-media-controls {
+            display: none !important;
+        }
+
+        /* Fullscreen styles - standard behavior, use object-fit */
+        .video-container.fullscreen {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .video-container.fullscreen .video-player {
+            width: 100%;
+            /* Fill container width */
+            height: 100%;
+            /* Fill container height */
+            object-fit: contain;
+            /* This is crucial for maintaining aspect ratio in fullscreen */
+        }
+
+        @media (max-width: 768px) {
+            .custom-controls {
+                padding: 0.5rem;
+            }
+
+            .control-btn {
+                font-size: 1rem;
+            }
+
+            .time-display {
+                font-size: 0.8rem;
+            }
+
+            .progress-container {
+                width: calc(100% - 180px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="video-container" id="videoContainer">
+        <video class="video-player" id="videoPlayer" preload="auto">
+            <source src="{{url}}" type="video/mp4">
+            Your browser does not support the video tag or the provided video format.
+        </video>
+
+        <div class="custom-controls" id="customControls">
+            <button class="control-btn play-pause" id="playPauseBtn">&#9654;</button>
+            <div class="volume-control">
+                <button class="control-btn volume-btn" id="volumeBtn">&#128266;</button>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
+            </div>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="time-display" id="timeDisplay">00:00 / 00:00</div>
+            <button class="control-btn fullscreen-btn" id="fullscreenBtn">&#9974;</button>
+        </div>
+    </div>
+
+    <script>
+        var video = document.getElementById('videoPlayer');
+        var videoContainer = document.getElementById('videoContainer');
+        var playPauseBtn = document.getElementById('playPauseBtn');
+        var volumeBtn = document.getElementById('volumeBtn');
+        var volumeSlider = document.getElementById('volumeSlider');
+        var progressContainer = document.getElementById('progressContainer');
+        var progressBar = document.getElementById('progressBar');
+        var timeDisplay = document.getElementById('timeDisplay');
+        var fullscreenBtn = document.getElementById('fullscreenBtn');
+        var customControls = document.getElementById('customControls');
+
+        video.controls = false; /* Ensure native controls are hidden */
+        video.autoplay = true;  /* Still autoplay */
+
+        // --- Custom Controls Logic ---
+
+        playPauseBtn.onclick = function () {
+            if (video.paused) {
+                video.play();
+                playPauseBtn.innerHTML = '&#9208;'; /* Pause symbol */
+            } else {
+                video.pause();
+                playPauseBtn.innerHTML = '&#9654;'; /* Play symbol */
+            }
+        };
+
+        video.onclick = function () {
+            if (video.paused) {
+                video.play();
+                playPauseBtn.innerHTML = '&#9208;'; /* Pause symbol */
+            } else {
+                video.pause();
+                playPauseBtn.innerHTML = '&#9654;'; /* Play symbol */
+            }
+        };
+
+        volumeSlider.oninput = function () {
+            video.volume = volumeSlider.value;
+            volumeBtn.innerHTML = (video.volume === 0) ? '&#128263;' : '&#128266;'; /* Mute/Volume icon */
+        };
+
+        volumeBtn.onclick = function () {
+            video.volume = (video.volume === 0) ? 1 : 0;
+            volumeSlider.value = video.volume;
+            volumeBtn.innerHTML = (video.volume === 0) ? '&#128263;' : '&#128266;'; /* Mute/Volume icon */
+        };
+
+        function formatTime(seconds) {
+            var minutes = Math.floor(seconds / 60);
+            var remainingSeconds = Math.floor(seconds % 60);
+            return (minutes < 10 ? '0' : '') + minutes + ':' + (remainingSeconds < 10 ? '0' : '') + remainingSeconds;
+        }
+
+        video.ontimeupdate = function () {
+            if (video.duration && !isNaN(video.duration)) {
+                var progress = (video.currentTime / video.duration) * 100;
+                progressBar.style.width = progress + '%';
+                timeDisplay.innerHTML = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+            } else {
+                timeDisplay.innerHTML = formatTime(video.currentTime) + ' / --:--';
+            }
+        };
+
+        progressContainer.onclick = function (e) {
+            if (video.duration && !isNaN(video.duration)) {
+                var rect = progressContainer.getBoundingClientRect();
+                var pos = (e.clientX - rect.left) / rect.width;
+                video.currentTime = pos * video.duration;
+            }
+        };
+
+        // --- Fullscreen Logic ---
+
+        fullscreenBtn.onclick = function () {
+            var fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+            if (!fullscreenElement) {
+                // Enter Fullscreen
+                if (videoContainer.requestFullscreen) {
+                    videoContainer.requestFullscreen();
+                } else if (videoContainer.webkitRequestFullscreen) { /* Safari */
+                    videoContainer.webkitRequestFullscreen();
+                } else if (videoContainer.mozRequestFullScreen) { /* Firefox */
+                    videoContainer.mozRequestFullScreen();
+                } else if (videoContainer.msRequestFullscreen) { /* IE11 */
+                    videoContainer.msRequestFullscreen();
+                }
+            } else {
+                // Exit Fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) { /* Firefox */
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
+            }
+        };
+
+        document.onfullscreenchange = document.onwebkitfullscreenchange = document.onmozfullscreenchange = document.onmsfullscreenchange = function () {
+            var fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (fullscreenElement) {
+                videoContainer.classList.add('fullscreen');
+                video.removeAttribute('width'); // Let CSS object-fit handle fullscreen
+            } else {
+                videoContainer.classList.remove('fullscreen');
+                setDynamicVideoWidth(); // Re-apply dynamic width on exit
+            }
+        };
+
+        // --- Dynamic Video Width Scaling Logic ---
+
+        function setDynamicVideoWidth() {
+            // Check if video metadata (dimensions) are loaded AND are valid (not zero)
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                var aspectRatio = video.videoWidth / video.videoHeight;
+                console.log("Video intrinsic dimensions reported: " + video.videoWidth + "x" + video.videoHeight);
+                console.log("Calculated aspect ratio: " + aspectRatio.toFixed(3));
+
+                var fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+                if (fullscreenElement) {
+                    return; // CSS handles fullscreen
+                }
+
+                const categorizationThreshold = 1.5;
+
+                if (aspectRatio <= categorizationThreshold) {
+                    video.setAttribute('width', '80%');
+                    console.log("Applied width: 80% (Aspect ratio <= " + categorizationThreshold + ", assumed 4:3 or narrower).");
+                } else {
+                    video.setAttribute('width', '100%');
+                    console.log("Applied width: 100% (Aspect ratio > " + categorizationThreshold + ", assumed 16:9 or wider).");
+                }
+            } else {
+                // If metadata not yet loaded or dimensions are zero, retry after a short delay
+                console.log("Video metadata not yet fully loaded or dimensions are zero. Retrying setDynamicVideoWidth...");
+                // Use a short timeout to allow the browser to populate dimensions accurately
+                setTimeout(setDynamicVideoWidth, 100);
+            }
+        }
+
+        // Trigger the dynamic width setting when video metadata is loaded
+        video.onloadedmetadata = function () {
+            setDynamicVideoWidth();
+            if (video.duration && !isNaN(video.duration)) {
+                timeDisplay.innerHTML = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+            } else {
+                timeDisplay.innerHTML = formatTime(video.currentTime) + ' / --:--';
+            }
+        };
+
+        // --- Controls and Cursor Visibility (Fade In/Out) ---
+
+        var controlsTimeout; // Timeout for hiding custom controls
+        var cursorHideTimeout; // Timeout for hiding the cursor
+
+        // Function to show controls and cursor
+        function showControlsAndCursor() {
+            clearTimeout(controlsTimeout);
+            clearTimeout(cursorHideTimeout);
+
+            customControls.classList.add('active'); // Show controls
+            document.body.classList.remove('hide-cursor'); // Show cursor
+
+            // Set timers to hide them if video is playing and no further activity
+            if (!video.paused) {
+                controlsTimeout = setTimeout(function () {
+                    customControls.classList.remove('active');
+                }, 3000); // Controls hide after 3 seconds of inactivity
+
+                cursorHideTimeout = setTimeout(function () {
+                    document.body.classList.add('hide-cursor');
+                }, 3000); // Cursor hides after 3 seconds of inactivity
+            }
+        }
+
+        // Bind mouse events to both video container and video element
+        videoContainer.onmousemove = showControlsAndCursor;
+        video.onmousemove = showControlsAndCursor;
+
+        // When mouse leaves the video area, start a shorter timer to hide cursor and controls
+        videoContainer.onmouseleave = function () {
+            if (!video.paused) {
+                controlsTimeout = setTimeout(function () {
+                    customControls.classList.remove('active');
+                }, 1000); // Controls hide after 1 second of leaving
+
+                cursorHideTimeout = setTimeout(function () {
+                    document.body.classList.add('hide-cursor');
+                }, 1000); // Cursor hides after 1 second of leaving
+            }
+        };
+        video.onmouseleave = videoContainer.onmouseleave; // Apply same logic to video element
+
+        // When video pauses, always show controls and cursor, clear hide timers
+        video.onpause = function () {
+            showControlsAndCursor(); // Show controls and cursor immediately
+            clearTimeout(controlsTimeout); // Keep controls visible
+            clearTimeout(cursorHideTimeout); // Keep cursor visible
+        };
+
+        // When video plays, ensure controls/cursor are briefly shown, then start hide timers
+        video.onplay = function () {
+            showControlsAndCursor(); // Show briefly
+            // Timers are already set within showControlsAndCursor if !video.paused
+        };
+
+        // --- Initial Load ---
+        window.onload = function () {
+            setDynamicVideoWidth(); // Initial call to set video width
+
+            // Set initial play/pause button state
+            if (video.paused) {
+                playPauseBtn.innerHTML = '&#9654;';
+            } else {
+                playPauseBtn.innerHTML = '&#9208;';
+            }
+
+            showControlsAndCursor(); // Show controls and cursor on page load
+            // If video auto-plays and no interaction, they will hide after 3 seconds.
+        };
+
+        // --- Keyboard Controls --- (Unchanged)
+        document.onkeydown = function (e) {
+            var keyCode = e.keyCode || e.which;
+
+            if (keyCode === 32) { // Spacebar for Play/Pause
+                e.preventDefault(); // Prevent default spacebar action (e.g., scrolling)
+                playPauseBtn.click();
+            }
+
+            if (keyCode === 39) { // Right arrow for seek forward
+                video.currentTime += 5;
+            }
+
+            if (keyCode === 37) { // Left arrow for seek backward
+                video.currentTime -= 5;
+            }
+
+            if (keyCode === 38) { // Up arrow for volume up
+                video.volume = Math.min(video.volume + 0.1, 1);
+                volumeSlider.value = video.volume;
+                volumeBtn.innerHTML = '&#128266;';
+            }
+
+            if (keyCode === 40) { // Down arrow for volume down
+                video.volume = Math.max(video.volume - 0.1, 0);
+                volumeSlider.value = video.volume;
+                volumeBtn.innerHTML = (video.volume === 0) ? '&#128263;' : '&#128266;';
+            }
+
+            if (keyCode === 70) { // 'F' key for Fullscreen
+                fullscreenBtn.click();
+            }
+        };
+    </script>
+</body>
+
+</html>
