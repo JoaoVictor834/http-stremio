@@ -1,6 +1,17 @@
-# Setup Windows
+# Sobre
+Desenvolvida para simplificar o acesso a conteúdo, esta ferramenta extrai vídeos de diversas plataformas de streaming usando scrapers e os organiza em uma API simples baseada em índices do [IMDb](https://www.imdb.com/).
+
+### Funcionalidades
+Além dos scrapers, a ferramenta conta com um servidor próprio, desenvolvido em **FastAPI**, que inclui as seguintes funcionalidades:
+- **Extensão Stremio**: Uma extensão que integra os sites da ferramenta ao catálogo padrão do Stremio.
+- **Site Próprio**: Um site simples, acessível em LAN, focado em oferecer suporte a navegadores antigos, como os encontrados em smart TVs mais antigas.
+- **Proxy de Vídeos**: Um proxy que intermedeia o envio de vídeos entre o site original e a ferramenta, utilizado principalmente para contornar restrições de CORS no Stremio.  
+- **Proxy de Caching**: Um proxy que armazena localmente arquivos menores, como imagens e páginas HTML, para diminuir o tempo de resposta da ferramenta.
+
+# Instalação
+## Stremio (Windows - localhost)
 ### 1. Baixe a ferramenta openssl
-Algumas fontes não funcionam com o proxy padrão do Stremio e precisam ser acessadas por um proxy customizado que, nesse caso, será hosteado no localhost. Porém, o Stremio exige uma conexão HTTPS para streams até mesmo no localhost, o que significa que o servidor local precisa de um certificado SLL confiável, o qual pode ser facilmente criado usando a ferramenta `openssl`.
+Algumas fontes não funcionam com o proxy padrão do Stremio e precisam ser acessadas por um proxy customizado que, nesse caso, será hospedado no localhost. Porém, o Stremio exige uma conexão HTTPS para streams até mesmo no localhost, o que significa que o servidor local precisa de um certificado SLL confiável, o qual pode ser facilmente criado usando a ferramenta `openssl`.
 #### Chocolatey
 Execute o seguinte comando para instalar o openssl usando Chocolatey:
 ```console
@@ -17,20 +28,15 @@ openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout localhost.key -out 
 Isso criará os arquivos `localhost.crt` e `localhost.key`.
 
 ### 3. Adicione o certificado à lista de certificados confiáveis do Windows
-#### Método 1 (padrão)
-1. Navegue ao diretório onde os arquivos da etapa anterior foram criados e clique com o botão esquerdo duas vezes no arquivo `localhost.crt`
+1. No gerenciador de arquivos, navegue ao diretório onde os arquivos da etapa anterior foram criados e clique com o botão esquerdo duas vezes no arquivo `localhost.crt`
 2. Na janela do certificado, clique na opção `Instalar Certificado`
 3. Escolha o local que preferir e, em seguida, clique em `Avançar`
 4. Na janela seguinte, selecione a opção `Colocar todos os certificados no repositório a seguir:` 
 5. Clique em `Procurar` e selecione a opção `Autoridades de Certificação Raiz Confiáveis`, em seguida clique em `Avançar` e conclua a ação.
 
-#### Método 2 (para certificados sem a extensão .crt)
-1. Pressione `Win + R`, digite `certlm.msc` e pressione `Enter`
-2. Procure por `Autoridades de Certificação Raiz Confiáveis` > `Certificados`
-3. Clique com o botão direito em `Certificados` e selecione `Todas as Tarefas` > `Importar`
-4. Navegue até o arquivo contendo o certificado e confirme sua instalação no repositório `Autoridades de Certificação Raiz Confiáveis`
-
 ### 4. Instale a ferramenta uv
+A ferramenta uv é usada para garantir a consistência de dependências entre diferentes computadores. Ela ajuda a evitar problemas causados por conflitos entre diferentes versões de pacotes ou do interpretador Python.
+
 #### winget
 Execute o seguinte comando para instalar a ferramenta uv usando winget:
 ```console
@@ -47,14 +53,19 @@ pip install uv
 Escolha alguma das várias opções de instalação disponíveis no [site da ferramenta](https://docs.astral.sh/uv/getting-started/installation/#installation-methods).
 
 ### 5. Instale as dependências do projeto
-Execute o seguinte comando para instalar as dependências usando a ferramenta uv:
+Navegue ao diretório raiz do projeo e execute o seguinte comando para instalar as dependências usando a ferramenta uv:
 ```console
 uv sync
 ```
+---
 
-# Como usar
-1. Navegue ao diretório onde o arquivo `main.py` está localizado e execute o seguinte comando para iniciar o servidor:
+### Como usar
+1. Navegue ao diretório raiz do projeto e execute o seguinte comando para iniciar o servidor:
 ```console
-uv run main.py https
+uv run manage.py https
 ```
 2. Instale o addon através da url `https://127.0.0.1:6222/manifest.json`
+
+
+## Site Próprio (Windows - LAN)
+TODO
