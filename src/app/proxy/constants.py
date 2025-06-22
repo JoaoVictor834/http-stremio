@@ -8,12 +8,14 @@ ALLOWED_HOSTS = [
     "live.metahub.space",
     "images.metahub.space",
     "episodes.metahub.space",
+    *pobreflix.ALLOWED_HOSTS,
     *redecanais.ALLOWED_HOSTS,
     *warezcdn.ALLOWED_HOSTS,
 ]
 
 # list of regular expressions that match urls used by scrapers
 ALLOWED_REGEXS = [
+    *pobreflix.ALLOWED_REGEXS,
     *redecanais.ALLOWED_REGEXS,
     *warezcdn.ALLOWED_REGEXS,
 ]
