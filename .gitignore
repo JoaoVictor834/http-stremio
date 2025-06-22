@@ -175,5 +175,8 @@ cython_debug/
 
 # Project specific files
 cache/
+*debug/
+*dbg*
 *.crt
 *.key
+*.pem
