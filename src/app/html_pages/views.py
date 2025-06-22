@@ -49,7 +49,7 @@ async def movie_info(id: str):
     return HTMLResponse(template.render(data))
 
 
-async def series_info(id: str):
+async def series_info(id: str, season: int):
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://v3-cinemeta.strem.io/meta/series/{id}.json") as response:
             series_data = await response.json()
@@ -60,11 +60,13 @@ async def series_info(id: str):
         if video["season"] == 0:
             continue
 
-        episode = {
-            "number": video["number"],
-            "title": video["name"],
-            "image": video["thumbnail"],
-        }
+        episode = {}
+        if video["season"] == season:
+            episode = {
+                "number": video["number"],
+                "title": video["name"],
+                "image": video["thumbnail"],
+            }
 
         try:
             seasons[video["season"]]["episodes"].append(episode)
@@ -86,6 +88,7 @@ async def series_info(id: str):
     template = templates.get_template("series.html")
     data = {
         "seasons": seasons,
+        "curr_season": season,
         "name": name,
         "logo": logo,
         "poster": poster,

@@ -30,8 +30,13 @@ async def movie_info_route(request: Request, id: str):
 
 
 @router.get("/series/{id}")
-async def series_info_route(request: Request, id: str):
-    return await series_info(id)
+async def series_info_redirect(request: Request, id: str):
+    return await series_info(id, 1)
+
+
+@router.get("/series/{id}/{season}")
+async def series_info_route(request: Request, id: str, season: int):
+    return await series_info(id, season)
 
 
 @router.get("/watch/movie/{id}")
