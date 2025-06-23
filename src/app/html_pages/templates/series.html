@@ -334,7 +334,7 @@
                 id="season-{{season.number}}">
                 <div class="episodes-grid">
                     {% for episode in season.episodes %}
-                    <a href="/watch/series/{{id}}/{{season.number}}/{{episode.number}}/" target="_blank">
+                    <a href="/redirect/?url=/watch/series/{{id}}/{{season.number}}/{{episode.number}}/" target="_blank">
                         <div class="episode-card" id="ep-{{season.number}}x{{episode.number}}">
                             <img loading="lazy" src="/proxy/cache/?url={{episode.image}}" alt="{{episode.title}}"
                                 onerror="this.onerror=null;this.src='/proxy/cache/?url={{background}}';">

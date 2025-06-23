@@ -160,6 +160,7 @@
             font-size: 0.95rem;
             margin-bottom: 0.25rem;
             display: -webkit-box;
+            line-clamp: 2;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
@@ -217,12 +218,6 @@
         <section class="series">
             <div class="section-header">
                 <h2 class="section-title">Series Collection</h2>
-                {# <a href="#" class="view-all">
-                    View All
-                    <svg viewBox="0 0 24 24">
-                        <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" />
-                    </svg>
-                </a> #}
             </div>
             <div class="content-grid">
                 {% for series in selected_series %}
@@ -243,16 +238,10 @@
         <section class="movies">
             <div class="section-header">
                 <h2 class="section-title">Movies Collection</h2>
-                {# <a href="#" class="view-all">
-                    View All
-                    <svg viewBox="0 0 24 24">
-                        <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" />
-                    </svg>
-                </a> #}
             </div>
             <div class="content-grid">
                 {% for movie in selected_movies %}
-                <a href="/movie/{{movie.id}}">
+                <a href="/redirect/?url=/movie/{{movie.id}}" target="_blank">
                     <div class="content-card">
                         <img src="/proxy/cache/?url=https://live.metahub.space/poster/small/{{movie.id}}/img"
                             alt="{{movie.name}}">

@@ -26,6 +26,12 @@ async def index():
     return HTMLResponse(template.render(data))
 
 
+async def redirect(url: str):
+    template = templates.get_template("loading.html")
+    data = {"next_url": url}
+    return HTMLResponse(template.render(data))
+
+
 async def movie_info(id: str):
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://v3-cinemeta.strem.io/meta/movie/{id}.json") as response:
@@ -114,9 +120,31 @@ async def watch_movie(id: str, proxy_url: str, cache_url: str, user_agent: str):
 
 
 async def watch_series(id: str, season: int, episode: int, proxy_url: str, cache_url: str, user_agent: str):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://v3-cinemeta.strem.io/meta/series/{id}.json") as response:
+            series_data = await response.json()
+
+    # get url of the next episode
+    next_url = f"/watch/series/{id}/1/1"
+    found_cur_ep = False
+    for ep_dict in series_data["meta"]["videos"]:
+        # check if the current episode has been found on the list of episodes
+        if ep_dict["season"] == season and ep_dict["number"] == episode:
+            found_cur_ep = True
+            continue
+
+        # get the url right after the current episode
+        if found_cur_ep:
+            next_url = f"/watch/series/{id}/{ep_dict['season']}/{ep_dict['number']}"
+            break
+
     # get stream
     streams = await redecanais.series_stream(id, season, episode, proxy_url=proxy_url, cache_url=cache_url)
-    stream = streams[0]["url"]
+    try:
+        stream = streams[0]["url"]
+    except IndexError:
+        print("apisode stream not found, redirecting to next episode...")
+        return RedirectResponse(next_url)
 
     # return raw stream if on android 4.2.2
     if "Android 4.2.2" in user_agent:
@@ -124,5 +152,5 @@ async def watch_series(id: str, season: int, episode: int, proxy_url: str, cache
 
     # render player template
     template = templates.get_template("player.html")
-    data = {"url": stream}
+    data = {"url": stream, "next_url": f"/redirect/?url={next_url}"}
     return HTMLResponse(template.render(data))

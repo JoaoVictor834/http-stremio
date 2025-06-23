@@ -450,8 +450,27 @@
         // When video plays, ensure controls/cursor are briefly shown, then start hide timers
         video.onplay = function () {
             showControlsAndCursor(); // Show briefly
-            // Timers are already set within showControlsAndCursor if !video.paused
         };
+
+        {% if next_url %}
+        console.log("{{next_url}}")
+        // Timers are already set within showControlsAndCursor if !video.paused
+        // Clear any existing interval to prevent multiple checks
+        if (window.videoEndCheckInterval) {
+            clearInterval(window.videoEndCheckInterval);
+        }
+
+        // Start checking if the video has ended
+        window.videoEndCheckInterval = setInterval(function () {
+            // Check if the video has ended (currentTime is very close to duration)
+            // A small tolerance (e.g., 0.1 or 0.2 seconds) is good for precision issues
+            if (video.currentTime >= video.duration - 0.2 && !video.paused) {
+                clearInterval(window.videoEndCheckInterval); // Stop checking
+                window.location.href = "{{next_url}}"; // Redirect
+            }
+        }, 200); // Check every 200 milliseconds (adjust as needed)
+        {% endif %}
+
 
         // --- Initial Load ---
         window.onload = function () {

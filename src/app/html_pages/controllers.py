@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 
-from .views import index, movie_info, watch_movie, series_info, watch_series
+from .views import index, redirect, movie_info, watch_movie, series_info, watch_series
 
 router = APIRouter(prefix="")
 
@@ -8,6 +8,11 @@ router = APIRouter(prefix="")
 @router.get("/")
 async def index_route(request: Request):
     return await index()
+
+
+@router.get("/redirect")
+async def redirect_route(url: str):
+    return await redirect(url)
 
 
 @router.get("/movie/{id}")

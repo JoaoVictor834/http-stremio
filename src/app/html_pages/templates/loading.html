@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading...</title>
+    <style>
+        /* Basic styling for the loading page */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #000;
+            /* Black background */
+            color: #fff;
+            /* White text for contrast */
+            overflow: hidden;
+            /* Hide scrollbars, especially for older IE versions */
+        }
+
+        .spinner-container {
+            text-align: center;
+            /* No padding or background here, as the spinner is drawn with borders */
+        }
+
+        /* The spinning circle itself */
+        .spinner {
+            border: 8px solid rgba(255, 255, 255, 0.3);
+            /* Light white border for the "track" */
+            border-top: 8px solid #ffffff;
+            /* Solid white border for the spinning part */
+            border-radius: 50%;
+            /* Makes it a circle */
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            /* Animation for spinning */
+            /* Vendor prefixes for older browser compatibility */
+            -webkit-animation: spin 1s linear infinite;
+            /* Chrome, Safari, Opera */
+            -moz-animation: spin 1s linear infinite;
+            /* Firefox */
+            -o-animation: spin 1s linear infinite;
+            /* Opera (older versions) */
+            display: inline-block;
+            /* Ensures it respects margin/padding and centers properly */
+        }
+
+        /* Keyframe animation for the spinning effect */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Vendor prefixed keyframes */
+        @-webkit-keyframes spin {
+            0% {
+                -webkit-transform: rotate(0deg);
+            }
+
+            100% {
+                -webkit-transform: rotate(360deg);
+            }
+        }
+
+        @-moz-keyframes spin {
+            0% {
+                -moz-transform: rotate(0deg);
+            }
+
+            100% {
+                -moz-transform: rotate(360deg);
+            }
+        }
+
+        @-o-keyframes spin {
+            0% {
+                -o-transform: rotate(0deg);
+            }
+
+            100% {
+                -o-transform: rotate(360deg);
+            }
+        }
+
+        /* Optional: Text below the spinner */
+        .loading-message {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ccc;
+            /* Slightly dimmer white for the text */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <div class="loading-message">Loading...</div>
+    </div>
+    <script>
+        window.onload = function () {
+            window.location.href = "{{next_url}}"
+        }
+    </script>
+</body>
+
+</html>
