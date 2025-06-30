@@ -167,6 +167,7 @@ async def get_series_pages(imdb: str, season: int, episode: int, cache_url: None
 async def get_movie_pages(imdb: str, cache_url: None | str) -> dict:
     try:
         media_pages = MOVIES_JSON[imdb]
+        media_pages = {key: urljoin(REDECANAIS_URL, media_pages[key]) for key in media_pages.keys()}
 
     except KeyError:
         # get information about the target media
