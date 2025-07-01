@@ -2,9 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import html_pages, proxy, stremio
+from .db import init_db
 
 
-app = FastAPI(debug=True)
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan, debug=True)
 
 app.add_middleware(
     CORSMiddleware,
