@@ -1,15 +1,15 @@
 from urllib.parse import urlparse
-import hashlib
 import ast
 import os
 
 import aiohttp
-import aiofiles
 from fastapi import Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import StreamingResponse, FileResponse, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .utils import check_allowed_urls, add_proxy_to_hls_parts, yield_chunks
+from .services import CacheMetaService, CacheMetaServiceExceptions
 from . import constants
 
 
@@ -53,28 +53,39 @@ async def stream_proxy(request: Request, url: str, headers: dict, request_header
         )
 
 
-async def cache_proxy(url: str, headers: dict):
+# TODO: update it to allow setting relative_expire_str
+async def cache_proxy(url: str, headers: dict, db: AsyncSession):
     # check if the url host is on the allow list
     check_allowed_urls(url)
 
-    # get hash of url plus headers
-    url_hash = hashlib.md5()
-    url_hash.update(f"{url} {headers}".encode())
-    url_hash = url_hash.hexdigest()
+    # get the cache metadatada record
+    cache_meta_service = CacheMetaService(db)
+    try:
+        cache_meta = await cache_meta_service.read_from_url(url, headers)
 
-    # download the file if it's not cached already
-    os.makedirs(constants.CACHE_DIR, exist_ok=True)
-    cache_path = os.path.join(constants.CACHE_DIR, url_hash)
-    if not os.path.exists(cache_path):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as file_response:
-                # cancel if an invalid status code is received
-                if not (200 <= file_response.status <= 299):
-                    return HTTPException(status_code=file_response.status)
+    # create the cache metadata records if it doesn't exist already
+    except CacheMetaServiceExceptions.CacheNotFoundError:
+        # TODO: delete old cache files before creating a new one if the total size of cache dir is beyond a certain threshold
+        cache_meta = await cache_meta_service.create(url, headers)
 
-                # download file
-                async with aiofiles.open(cache_path, "wb") as cache_file:
-                    async for chunk in file_response.content.iter_chunked(1024):
-                        await cache_file.write(chunk)
+    # get the path to the cached file
+    cache_path = os.path.join(constants.CACHE_DIR, cache_meta.id)
 
-    return FileResponse(cache_path)
+    # get response headers and make all the keys lowercase
+    response_headers = ast.literal_eval(cache_meta.response_headers)
+    response_headers = {key.lower(): response_headers[key] for key in response_headers.keys()}
+
+    # remove "content-encoding" header to avoid mismatch between the original encoding
+    # and the one from the cached file
+    try:
+        response_headers.pop("content-encoding")
+    except KeyError:
+        pass
+
+    # send de cached request and file to the user
+    # this will return the original response even if it has an error status code
+    return FileResponse(
+        cache_path,
+        status_code=cache_meta.response_status,
+        headers=response_headers,
+    )

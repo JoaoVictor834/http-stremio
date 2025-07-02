@@ -5,7 +5,7 @@ from .proxy.models import Base
 
 DATABASE_URL = "sqlite+aiosqlite:///sqlite3.db"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL)
 SessionLocal = async_sessionmaker(engine)
 
 

@@ -14,10 +14,22 @@ from .models import CacheMeta
 from .constants import CACHE_DIR
 
 
-# TODO: replace generic Exception classes with more specific ones
+class CacheMetaServiceExceptions:
+    class CacheNotFoundError(Exception):
+        pass
+
+    class CacheAlreadyExistsError(Exception):
+        pass
+
+    class SimultaneousUpdateError(Exception):
+        pass
+
+
+# TODO: figure out a way to deal with cached responses with status like 429
 # TODO: add some docstrings explaining the logic on each method
 class CacheMetaService:
     def __init__(self, db: AsyncSession):
+        os.makedirs(CACHE_DIR, exist_ok=True)
         self.db = db
 
     async def create(self, request_url: str, request_headers: dict | None = None, relative_expires_str: str = "24h") -> CacheMeta:
@@ -44,7 +56,8 @@ class CacheMetaService:
             self.db.add(cache_meta)
             await self.db.commit()
         except IntegrityError:
-            raise Exception(f"A record for '{request_url}' and '{request_headers}' already exists!")
+            msg = f"A record for '{request_url}' and '{request_headers}' already exists!"
+            raise CacheMetaServiceExceptions.CacheAlreadyExistsError(msg)
 
         try:
             # run the update method to fill the remaining values
@@ -59,11 +72,13 @@ class CacheMetaService:
         # get CacheMeta instance
         cache_meta = await self.db.get(CacheMeta, hash)
         if cache_meta is None:
-            raise Exception(f"Record with hash '{hash}' was not found when updating cached file.")
+            msg = f"Record with hash '{hash}' could not be found."
+            raise CacheMetaServiceExceptions.CacheNotFoundError(msg)
 
         # if is_downloaded is false, that means the file is already being downloaded/updated
         if cache_meta.is_downloaded is False:
-            raise Exception(f"{cache_meta} is already being updated!")
+            msg = f"{cache_meta} is already being updated!"
+            raise CacheMetaServiceExceptions.SimultaneousUpdateError(msg)
 
         try:
             # mark record as being downloaded
@@ -80,9 +95,6 @@ class CacheMetaService:
             request_headers = ast.literal_eval(cache_meta.request_headers)
             async with aiohttp.ClientSession() as session:
                 async with session.get(request_url, headers=request_headers) as response:
-                    if not (200 <= response.status <= 299):
-                        raise Exception(f"Unnexpected status code when updating cahed file '{response.status}'.")
-
                     async with aiofiles.open(cache_path, "wb") as file:
                         async for chunk in response.content.iter_chunked(1024 * 1024):
                             await file.write(chunk)
@@ -116,6 +128,9 @@ class CacheMetaService:
     async def read(self, hash) -> CacheMeta:
         # get target record
         cache_meta = await self.db.get(CacheMeta, hash)
+        if cache_meta is None:
+            msg = f"Record with hash '{hash}' could not be found."
+            raise CacheMetaServiceExceptions.CacheNotFoundError(msg)
 
         # check if it's pending to be cached
         if cache_meta.is_downloaded is None:
@@ -148,3 +163,15 @@ class CacheMetaService:
         cache_path = os.path.join(CACHE_DIR, hash)
         if os.path.exists(cache_path):
             os.remove(cache_path)
+
+    async def read_from_url(self, request_url: str, request_headers: dict | None = None):
+        if request_headers is None:
+            request_headers = {}
+
+        # get hash of url+headers
+        hash = hashlib.md5()
+        hash.update(f"{request_url} {request_headers}".encode())
+        hash = hash.hexdigest()
+
+        # run the read method
+        return await self.read(hash)

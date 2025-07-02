@@ -19,7 +19,7 @@ async def list_cache(db: AsyncSession = Depends(get_db)):
     results = await db.execute(stmt)
     results = [instance.to_json() for instance in results.scalars().all()]
 
-    return JSONResponse(results)
+    return JSONResponse({"count": len(results), "results": results})
 
 
 @router.get("/cache/{hash}")
