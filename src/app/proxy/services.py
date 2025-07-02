@@ -1,18 +1,124 @@
+from datetime import datetime
+import hashlib
+import ast
+import os
+
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
+import aiofiles
+import aiohttp
+
+from .models import CacheMeta
+from .constants import CACHE_DIR
 
 
+# TODO: replace generic Exception classes with more specific ones
+# TODO: add some docstrings explaining the logic on each method
 class CacheMetaService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create(self):
-        pass
+    async def create(self, request_url: str, request_headers: dict, relative_expires_str: str = "24h") -> CacheMeta:
+        # get hash of url+headers
+        hash = hashlib.md5()
+        hash.update(f"{request_url} {request_headers}".encode())
+        hash = hash.hexdigest()
+
+        # create a new CacheMeta instance with basic values
+        cache_meta = CacheMeta(
+            id=hash,
+            is_downloaded=None,
+            request_url=request_url,
+            request_headers=str(request_headers),
+            created_at=datetime.now(),
+            last_used_at=datetime.now(),
+        )
+
+        # create new record on the database
+        try:
+            self.db.add(cache_meta)
+            await self.db.commit()
+        except IntegrityError:
+            raise Exception(f"A record for '{request_url}' and '{request_headers}' already exists!")
+
+        try:
+            # run the update method to fill the remaining values
+            return await self.update(hash, relative_expires_str)
+        except Exception as e:
+            # delete the uncompleted record if something fails
+            await self.delete(hash)
+
+            raise e
+
+    async def update(self, hash: str, relative_expires_str: str | None = None) -> CacheMeta:
+        # get CacheMeta instance
+        cache_meta = await self.db.get(CacheMeta, hash)
+        if cache_meta is None:
+            raise Exception(f"Record with hash '{hash}' was not found when updating cached file.")
+
+        # if is_downloaded is false, that means the file is already being downloaded/updated
+        if cache_meta.is_downloaded is False:
+            raise Exception(f"{cache_meta} is already being updated!")
+
+        try:
+            # mark record as being downloaded
+            cache_meta.is_downloaded = False
+            await self.db.commit()
+
+            # re-atach the CacheMeta instance into the current transaction
+            cache_meta = await self.db.get(CacheMeta, hash)
+
+            # send the request for the request_url on the record with the request_headers
+            # also on the record and save the response to the same file
+            cache_path = os.path.join(CACHE_DIR, hash)
+            request_url = cache_meta.request_url
+            request_headers = ast.literal_eval(cache_meta.request_headers)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(request_url, headers=request_headers) as response:
+                    if not (200 <= response.status <= 299):
+                        raise Exception(f"Unnexpected status code when updating cahed file '{response.status}'.")
+
+                    async with aiofiles.open(cache_path, "wb") as file:
+                        async for chunk in response.content.iter_chunked(1024 * 1024):
+                            await file.write(chunk)
+
+                    # update the record with the new data
+                    cache_meta.response_headers = str(dict(response.headers))  # update response_headers
+                    cache_meta.response_status = response.status  # update response_status
+                    if relative_expires_str is not None:  # updates relative_expires_str if needed
+                        cache_meta.relative_expires_str = relative_expires_str
+                    else:
+                        relative_expires_str = cache_meta.relative_expires_str
+                    cache_meta.expires_at = datetime(year=2030, month=1, day=1)  # TODO: update it to actually use the time specified in relative_expires_str
+
+            # set is_downloaded to true
+            cache_meta.is_downloaded = True
+
+            # commit changes and return the updated object
+            await self.db.commit()
+            await self.db.refresh(cache_meta)
+
+            return cache_meta
+
+        except Exception as e:
+            # reset is_downloaded to null if anything fails
+            cache_meta = await self.db.get(CacheMeta, hash)
+            cache_meta.is_downloaded = None
+            await self.db.commit()
+
+            raise e
 
     async def read(self):
         pass
 
-    async def update(self):
-        pass
+    async def delete(self, hash: str):
+        # delete record from the database
+        cache_meta = await self.db.get(CacheMeta, hash)
+        await self.db.delete(cache_meta)
+        await self.db.commit()
 
-    async def delete(self):
-        pass
+        # delete cache file
+        cache_path = os.path.join(CACHE_DIR, hash)
+        if os.path.exists(cache_path):
+            os.remove(cache_path)

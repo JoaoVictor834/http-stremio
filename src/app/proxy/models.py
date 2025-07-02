@@ -11,8 +11,7 @@ class Base(DeclarativeBase):
 class CacheMeta(Base):
     __tablename__ = "cachemeta"
 
-    id: Mapped[int] = mapped_column(types.Integer, primary_key=True)
-    hash: Mapped[str] = mapped_column(types.String(length=32), nullable=False, unique=True)
+    id: Mapped[str] = mapped_column(types.String(length=32), nullable=False, unique=True, primary_key=True)
     is_downloaded: Mapped[bool] = mapped_column(types.Boolean, nullable=True)
 
     # request_method: Mapped[str]
@@ -20,13 +19,13 @@ class CacheMeta(Base):
     request_headers: Mapped[str] = mapped_column(types.String, nullable=False)
     # request_body: Mapped[str]
 
-    response_headers: Mapped[str] = mapped_column(types.String, nullable=False)
-    response_status: Mapped[int] = mapped_column(types.Integer, nullable=False)
+    response_headers: Mapped[str] = mapped_column(types.String, nullable=True)
+    response_status: Mapped[int] = mapped_column(types.Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(types.DateTime, nullable=False)
-    last_used_at: Mapped[datetime] = mapped_column(types.DateTime, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(types.DateTime, nullable=False)
-    relative_expires_str: Mapped[str] = mapped_column(types.String, nullable=False)
+    last_used_at: Mapped[datetime] = mapped_column(types.DateTime, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(types.DateTime, nullable=True)
+    relative_expires_str: Mapped[str] = mapped_column(types.String, nullable=True)
 
     def __repr__(self):
         return f"<CacheMeta(id={self.id}, hash={self.hash}, request_url={self.request_url}, created_at={self.created_at})>"
@@ -34,7 +33,6 @@ class CacheMeta(Base):
     def to_json(self):
         return {
             "id": self.id,
-            "hash": self.hash,
             "is_downloaded": self.is_downloaded,
             # "request_method": self.request_method,
             "request_url": self.request_url,
