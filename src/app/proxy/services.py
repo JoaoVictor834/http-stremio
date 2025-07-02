@@ -1,14 +1,15 @@
 from datetime import datetime
+import asyncio
 import hashlib
 import ast
 import os
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
 import aiofiles
 import aiohttp
 
+from .utils import str_to_timedelta
 from .models import CacheMeta
 from .constants import CACHE_DIR
 
@@ -19,7 +20,10 @@ class CacheMetaService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create(self, request_url: str, request_headers: dict, relative_expires_str: str = "24h") -> CacheMeta:
+    async def create(self, request_url: str, request_headers: dict | None = None, relative_expires_str: str = "24h") -> CacheMeta:
+        if request_headers is None:
+            request_headers = {}
+
         # get hash of url+headers
         hash = hashlib.md5()
         hash.update(f"{request_url} {request_headers}".encode())
@@ -86,11 +90,11 @@ class CacheMetaService:
                     # update the record with the new data
                     cache_meta.response_headers = str(dict(response.headers))  # update response_headers
                     cache_meta.response_status = response.status  # update response_status
-                    if relative_expires_str is not None:  # updates relative_expires_str if needed
+                    if relative_expires_str is not None:  # update relative_expires_str if needed
                         cache_meta.relative_expires_str = relative_expires_str
                     else:
                         relative_expires_str = cache_meta.relative_expires_str
-                    cache_meta.expires_at = datetime(year=2030, month=1, day=1)  # TODO: update it to actually use the time specified in relative_expires_str
+                    cache_meta.expires_at = datetime.now() + str_to_timedelta(relative_expires_str)  # update expire date
 
             # set is_downloaded to true
             cache_meta.is_downloaded = True
@@ -109,8 +113,30 @@ class CacheMetaService:
 
             raise e
 
-    async def read(self):
-        pass
+    async def read(self, hash) -> CacheMeta:
+        # get target record
+        cache_meta = await self.db.get(CacheMeta, hash)
+
+        # check if it's pending to be cached
+        if cache_meta.is_downloaded is None:
+            return await self.update(cache_meta.id)
+
+        # check if the cached file has expired
+        if datetime.now() > cache_meta.expires_at:
+            return await self.update(cache_meta.id)
+
+        # check if it's already being cached
+        # and wait for the download to finish
+        while cache_meta.is_downloaded is False:
+            await self.db.refresh(cache_meta)
+            await asyncio.sleep(0.05)
+
+        # update last_uded_at
+        cache_meta.last_used_at = datetime.now()
+        await self.db.commit()
+        await self.db.refresh(cache_meta)
+
+        return cache_meta
 
     async def delete(self, hash: str):
         # delete record from the database
