@@ -24,11 +24,11 @@ async def stream_proxy_route(request: Request, url: str, headers: None | str = N
 
 
 @router.get("/cache/")
-async def cache_proxy_route(request: Request, url: str, headers: None | str = None, db: AsyncSession = Depends(get_db)):
+async def cache_proxy_route(request: Request, url: str, headers: str | None = None, expires: str | None = None, db: AsyncSession = Depends(get_db)):
     # create headers dict that will be used on the request to the host
     if headers is not None:
         headers = ast.literal_eval(headers)
     else:
         headers = {}
 
-    return await cache_proxy(url, headers, db)
+    return await cache_proxy(url, headers, expires, db)

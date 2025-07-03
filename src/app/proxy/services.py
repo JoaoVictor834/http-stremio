@@ -32,9 +32,12 @@ class CacheMetaService:
         os.makedirs(CACHE_DIR, exist_ok=True)
         self.db = db
 
-    async def create(self, request_url: str, request_headers: dict | None = None, relative_expires_str: str = "24h") -> CacheMeta:
+    async def create(self, request_url: str, request_headers: dict | None = None, relative_expires_str: str | None = None) -> CacheMeta:
+        # set default values if nothing is specified
         if request_headers is None:
             request_headers = {}
+        if relative_expires_str is None:
+            relative_expires_str = "24h"
 
         # get hash of url+headers
         hash = hashlib.md5()
@@ -125,7 +128,7 @@ class CacheMetaService:
 
             raise e
 
-    async def read(self, hash) -> CacheMeta:
+    async def read(self, hash: str, relative_expires_str: str | None = None) -> CacheMeta:
         # get target record
         cache_meta = await self.db.get(CacheMeta, hash)
         if cache_meta is None:
@@ -134,11 +137,11 @@ class CacheMetaService:
 
         # check if it's pending to be cached
         if cache_meta.is_downloaded is None:
-            return await self.update(cache_meta.id)
+            cache_meta = await self.update(cache_meta.id, relative_expires_str)
 
         # check if the cached file has expired
         if datetime.now() > cache_meta.expires_at:
-            return await self.update(cache_meta.id)
+            cache_meta = await self.update(cache_meta.id, relative_expires_str)
 
         # check if it's already being cached
         # and wait for the download to finish
@@ -146,7 +149,7 @@ class CacheMetaService:
             await self.db.refresh(cache_meta)
             await asyncio.sleep(0.05)
 
-        # update last_uded_at
+        # update last_used_at
         cache_meta.last_used_at = datetime.now()
         await self.db.commit()
         await self.db.refresh(cache_meta)
@@ -164,7 +167,7 @@ class CacheMetaService:
         if os.path.exists(cache_path):
             os.remove(cache_path)
 
-    async def read_from_url(self, request_url: str, request_headers: dict | None = None):
+    async def read_from_url(self, request_url: str, request_headers: dict | None = None, relative_expires_str: str | None = None):
         if request_headers is None:
             request_headers = {}
 
@@ -174,4 +177,4 @@ class CacheMetaService:
         hash = hash.hexdigest()
 
         # run the read method
-        return await self.read(hash)
+        return await self.read(hash, relative_expires_str)

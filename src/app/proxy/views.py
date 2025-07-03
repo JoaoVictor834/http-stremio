@@ -53,20 +53,19 @@ async def stream_proxy(request: Request, url: str, headers: dict, request_header
         )
 
 
-# TODO: update it to allow setting relative_expire_str
-async def cache_proxy(url: str, headers: dict, db: AsyncSession):
+async def cache_proxy(url: str, headers: dict, expires: str | None, db: AsyncSession):
     # check if the url host is on the allow list
     check_allowed_urls(url)
 
     # get the cache metadatada record
     cache_meta_service = CacheMetaService(db)
     try:
-        cache_meta = await cache_meta_service.read_from_url(url, headers)
+        cache_meta = await cache_meta_service.read_from_url(url, headers, expires)
 
     # create the cache metadata records if it doesn't exist already
     except CacheMetaServiceExceptions.CacheNotFoundError:
         # TODO: delete old cache files before creating a new one if the total size of cache dir is beyond a certain threshold
-        cache_meta = await cache_meta_service.create(url, headers)
+        cache_meta = await cache_meta_service.create(url, headers, expires)
 
     # get the path to the cached file
     cache_path = os.path.join(constants.CACHE_DIR, cache_meta.id)
@@ -75,10 +74,11 @@ async def cache_proxy(url: str, headers: dict, db: AsyncSession):
     response_headers = ast.literal_eval(cache_meta.response_headers)
     response_headers = {key.lower(): response_headers[key] for key in response_headers.keys()}
 
-    # remove "content-encoding" header to avoid mismatch between the original encoding
-    # and the one from the cached file
+    # remove "content-encoding" header and also "content-length" if the former is removed succesfully
+    # this is done to avoid mismatch between the original encoding/size and the one from the cached file
     try:
         response_headers.pop("content-encoding")
+        response_headers.pop("content-length")
     except KeyError:
         pass
 
