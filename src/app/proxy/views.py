@@ -1,16 +1,19 @@
 from urllib.parse import urlparse
+import asyncio
 import ast
 import os
 
 import aiohttp
 from fastapi import Request
-from fastapi.exceptions import HTTPException
 from fastapi.responses import StreamingResponse, FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .utils import check_allowed_urls, add_proxy_to_hls_parts, yield_chunks
 from .services import CacheMetaService, CacheMetaServiceExceptions
-from . import constants
+from .tasks import delete_exceeding_caches
+from .constants import CACHE_DIR, HLS_CONTENT_TYPE_HEADERS
+
+cache_proxy_lock = asyncio.Lock()
 
 
 async def stream_proxy(request: Request, url: str, headers: dict, request_headers: dict):
@@ -36,7 +39,7 @@ async def stream_proxy(request: Request, url: str, headers: dict, request_header
         response_headers.update({"access-control-allow-origin": "*"})
 
     # modify hls streams to use local proxy
-    if response_headers["content-type"] in constants.HLS_CONTENT_TYPE_HEADERS:
+    if response_headers["content-type"] in HLS_CONTENT_TYPE_HEADERS:
         updated_content = add_proxy_to_hls_parts(await response.text())
         return Response(
             updated_content,
@@ -53,22 +56,24 @@ async def stream_proxy(request: Request, url: str, headers: dict, request_header
         )
 
 
+# TODO: block big files from being cached
 async def cache_proxy(url: str, headers: dict, expires: str | None, db: AsyncSession):
     # check if the url host is on the allow list
     check_allowed_urls(url)
 
     # get the cache metadatada record
     cache_meta_service = CacheMetaService(db)
+    # async with cache_proxy_lock:
     try:
         cache_meta = await cache_meta_service.read_from_url(url, headers, expires)
 
     # create the cache metadata records if it doesn't exist already
     except CacheMetaServiceExceptions.CacheNotFoundError:
-        # TODO: delete old cache files before creating a new one if the total size of cache dir is beyond a certain threshold
+        asyncio.create_task(delete_exceeding_caches())  # run the delete task without blocking the view
         cache_meta = await cache_meta_service.create(url, headers, expires)
 
     # get the path to the cached file
-    cache_path = os.path.join(constants.CACHE_DIR, cache_meta.id)
+    cache_path = os.path.join(CACHE_DIR, cache_meta.id)
 
     # get response headers and make all the keys lowercase
     response_headers = ast.literal_eval(cache_meta.response_headers)

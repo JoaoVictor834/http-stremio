@@ -9,9 +9,11 @@ from sqlalchemy.exc import IntegrityError
 import aiofiles
 import aiohttp
 
-from .utils import str_to_timedelta
+from .utils import str_to_timedelta, get_file_size
 from .models import CacheMeta
 from .constants import CACHE_DIR
+
+delete_lock = asyncio.Lock()
 
 
 class CacheMetaServiceExceptions:
@@ -103,6 +105,7 @@ class CacheMetaService:
                             await file.write(chunk)
 
                     # update the record with the new data
+                    cache_meta.cache_size = get_file_size(cache_path)  # update cache_size
                     cache_meta.response_headers = str(dict(response.headers))  # update response_headers
                     cache_meta.response_status = response.status  # update response_status
                     if relative_expires_str is not None:  # update relative_expires_str if needed
@@ -128,6 +131,7 @@ class CacheMetaService:
 
             raise e
 
+    # TODO FIXME: there might be a race condition on the checks if the cache is pending or has expired
     async def read(self, hash: str, relative_expires_str: str | None = None) -> CacheMeta:
         # get target record
         cache_meta = await self.db.get(CacheMeta, hash)
@@ -158,9 +162,10 @@ class CacheMetaService:
 
     async def delete(self, hash: str):
         # delete record from the database
-        cache_meta = await self.db.get(CacheMeta, hash)
-        await self.db.delete(cache_meta)
-        await self.db.commit()
+        async with delete_lock:
+            cache_meta = await self.db.get(CacheMeta, hash)
+            await self.db.delete(cache_meta)
+            await self.db.commit()
 
         # delete cache file
         cache_path = os.path.join(CACHE_DIR, hash)

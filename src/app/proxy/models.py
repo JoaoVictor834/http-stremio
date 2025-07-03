@@ -13,6 +13,7 @@ class CacheMeta(Base):
 
     id: Mapped[str] = mapped_column(types.String(length=32), nullable=False, unique=True, primary_key=True)
     is_downloaded: Mapped[bool] = mapped_column(types.Boolean, nullable=True)
+    cache_size: Mapped[int] = mapped_column(types.Integer, nullable=True)
 
     # request_method: Mapped[str]
     request_url: Mapped[str] = mapped_column(types.String, nullable=False)
@@ -34,6 +35,7 @@ class CacheMeta(Base):
         return {
             "id": self.id,
             "is_downloaded": self.is_downloaded,
+            "cache_size": self.cache_size,
             # "request_method": self.request_method,
             "request_url": self.request_url,
             "request_headers": self.request_headers,

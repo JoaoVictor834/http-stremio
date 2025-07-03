@@ -1,5 +1,6 @@
 from urllib.parse import urlencode, urlparse
 from datetime import timedelta
+from pathlib import Path
 import asyncio
 import re
 
@@ -96,3 +97,13 @@ def str_to_timedelta(string: str):
                 args.update({"seconds": amount})
 
     return timedelta(**args)
+
+
+def get_dir_size(dir_path: str):
+    """Returns the size in bytes of all the folders in a directory and its subdirectories combined"""
+    return sum(file.stat().st_size for file in Path(dir_path).rglob("*"))
+
+
+def get_file_size(file_path: str):
+    """Returns the size of a file in bytes"""
+    return Path(file_path).stat().st_size
