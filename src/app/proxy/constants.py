@@ -20,7 +20,6 @@ ALLOWED_REGEXS = [
     *warezcdn.ALLOWED_REGEXS,
 ]
 
-CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 
 HLS_CONTENT_TYPE_HEADERS = [
     "application/vnd.apple.mpegURL",
@@ -29,3 +28,6 @@ HLS_CONTENT_TYPE_HEADERS = [
     "audio/x-mpegurl",
     "text/plain",
 ]
+
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
+MAX_CACHE_DIR_SIZE = 200 * 1024 * 1024  # 200 megabytes

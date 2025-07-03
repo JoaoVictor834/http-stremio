@@ -1,4 +1,6 @@
 from urllib.parse import urlencode, urlparse
+from datetime import timedelta
+from pathlib import Path
 import asyncio
 import re
 
@@ -67,3 +69,41 @@ def add_proxy_to_hls_parts(m3u8_content: str, headers: dict | None = None):
             lines[i] = f"?{query}"
 
     return "\n".join(lines)
+
+
+def str_to_timedelta(string: str):
+    """Converts a deltatime string into a deltatime object
+
+    Example:
+    --------
+    - Input: 1d12h18m9s
+    - Output: datetime.timedelta(days=1, seconds=44289)
+    """
+    matches = re.findall(r"(?:(\d+)(d|h|m|s))", string.lower())
+
+    args = {}
+    for item in matches:
+        amount = int(item[0])
+        delta_type = item[1]
+
+        match delta_type:
+            case "d":
+                args.update({"days": amount})
+            case "h":
+                args.update({"hours": amount})
+            case "m":
+                args.update({"minutes": amount})
+            case "s":
+                args.update({"seconds": amount})
+
+    return timedelta(**args)
+
+
+def get_dir_size(dir_path: str):
+    """Returns the size in bytes of all the folders in a directory and its subdirectories combined"""
+    return sum(file.stat().st_size for file in Path(dir_path).rglob("*"))
+
+
+def get_file_size(file_path: str):
+    """Returns the size of a file in bytes"""
+    return Path(file_path).stat().st_size

@@ -2,9 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import html_pages, proxy, stremio
+from .db import init_db
+from .test_routes import router as tests_router
 
 
-app = FastAPI(debug=True)
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan, debug=True)
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,3 +23,4 @@ app.add_middleware(
 app.include_router(html_pages.router)
 app.include_router(proxy.router)
 app.include_router(stremio.router)
+app.include_router(tests_router)
