@@ -25,7 +25,7 @@ HLS_CONTENT_TYPE_HEADERS = [
     "text/plain",
 ]
 
-app = FastAPI(debug=True)
+app = FastAPI(debug=True, root_path="/redecanais")  # ou o subcaminho que você está usando
 
 
 app.add_middleware(
