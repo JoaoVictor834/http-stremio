@@ -86,7 +86,7 @@ async def series_stream(request: Request):
     # mount proxy url with the same url used to acces the server
     port = request.url.port
     if port is None:
-        proxy_url = f"{request.url.scheme}://{request.url.hostname}/proxy/"
+        proxy_url = f"{request.url.scheme}://{request.url.hostname}/redecanais/proxy/"
     else:
         proxy_url = f"{request.url.scheme}://{request.url.hostname}:{port}/proxy/"
 
