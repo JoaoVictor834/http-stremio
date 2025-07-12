@@ -25,7 +25,7 @@ HLS_CONTENT_TYPE_HEADERS = [
     "text/plain",
 ]
 
-app = FastAPI(debug=True, root_path="/redecanais")  # ou o subcaminho que você está usando
+app = FastAPI(debug=True)  # ou o subcaminho que você está usando
 
 
 app.add_middleware(
@@ -59,7 +59,7 @@ async def movie_stream(request: Request):
     # mount proxy url with the same url used to acces the server
     port = request.url.port
     if port is None:
-        proxy_url = f"{request.url.scheme}://{request.url.hostname}/redecanais/proxy/"
+        proxy_url = f"{request.url.scheme}://{request.url.hostname}/proxy/"
     else:
         proxy_url = f"{request.url.scheme}://{request.url.hostname}:{port}/proxy/"
 
@@ -86,7 +86,7 @@ async def series_stream(request: Request):
     # mount proxy url with the same url used to acces the server
     port = request.url.port
     if port is None:
-        proxy_url = f"{request.url.scheme}://{request.url.hostname}/redecanais/proxy/"
+        proxy_url = f"{request.url.scheme}://{request.url.hostname}/proxy/"
     else:
         proxy_url = f"{request.url.scheme}://{request.url.hostname}:{port}/proxy/"
 
